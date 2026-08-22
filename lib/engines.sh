@@ -58,6 +58,16 @@ engine_run_codex() {
 ${deliverables}
 【工作目录】${fdir}"
 
+  # Codex 状态目录重定向：默认 ~/.codex 在 IDE 沙箱内可能不可写（实测暴露），
+  # 重定向到项目内 .specc-cache/codex-home（已被 .gitignore 覆盖，不入库）。
+  # 首次使用时从 ~/.codex/config.toml 复制端点配置。
+  local codex_home="$SPECC_ROOT/$(cfg_get 'engine.output_dir' '.specc-cache')/codex-home"
+  mkdir -p "$codex_home"
+  if [[ ! -f "$codex_home/config.toml" && -f "$HOME/.codex/config.toml" ]]; then
+    cp "$HOME/.codex/config.toml" "$codex_home/config.toml"
+  fi
+  export CODEX_HOME="$codex_home"
+
   # codex exec：非交互模式、跳过 git 仓库检查（本仓库可能刚初始化）
   # --full-auto：在沙箱内自动执行工具调用；高风险操作仍受审批策略约束
   ( cd "$SPECC_ROOT" && codex exec --skip-git-repo-check "$exec_prompt" )
