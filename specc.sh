@@ -90,7 +90,9 @@ cmd_new() {
   [[ "$fid" =~ ^[A-Za-z0-9][A-Za-z0-9-]*$ ]] || die "需求ID只允许字母、数字与连字符，且以字母数字开头"
 
   local fdir="$FEATURES_DIR/$fid"
-  [[ -e "$fdir" ]] && die "需求已存在：$fdir（不会覆盖；如需重来请手动删除或使用 redo）"
+  # 注意：变量后紧跟中文全角字符时必须用 ${} 包裹，
+  # 否则 UTF-8 环境下 bash 会把全角字符并入变量名（unbound variable）
+  [[ -e "$fdir" ]] && die "需求已存在：${fdir}（不会覆盖；如需重来请手动删除或使用 redo）"
 
   mkdir -p "$fdir/contracts"
   state_init "$fdir" "$fid"
@@ -110,7 +112,7 @@ cmd_status() {
       [[ -d "$d" ]] || continue
       found=1
       local id; id="$(basename "$d")"
-      echo "  - $id（当前阶段：$(state_get "$d" 'stage')）"
+      echo "  - ${id}（当前阶段：$(state_get "$d" 'stage')）"
     done
     (( found == 1 )) || echo "  （暂无需求，使用 ./specc.sh new <需求ID> 创建）"
     return 0
@@ -143,7 +145,12 @@ PYEOF
 
 # ---- 主路由 ----
 main() {
-  local cmd="${1:-help}"
+  # 无任何参数：输出帮助并以非 0 退出（验收用例 TC-A4：提示用法但视为调用错误）
+  if [[ $# -eq 0 ]]; then
+    usage
+    exit 1
+  fi
+  local cmd="$1"
   case "$cmd" in
     init)   cmd_init ;;
     new)    shift; cmd_new "$@" ;;

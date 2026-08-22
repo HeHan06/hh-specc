@@ -31,7 +31,7 @@ require_feature() {
   local fid="$1"
   [[ -n "$fid" ]] || die "缺少需求ID，用法：specc.sh <命令> <需求ID>"
   local fdir="$FEATURES_DIR/$fid"
-  [[ -d "$fdir" ]] || die "需求目录不存在：$fdir（请先执行 ./specc.sh new $fid）"
+  [[ -d "$fdir" ]] || die "需求目录不存在：${fdir}（请先执行 ./specc.sh new ${fid}）"
   echo "$fdir"
 }
 

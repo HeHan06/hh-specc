@@ -35,7 +35,7 @@ stage_deliverables() {
 pipeline_check_precondition() {
   local stage="$1" fdir="$2"
   local idx; idx="$(stage_index "$stage")"
-  (( idx >= 0 )) || die "未知阶段：$stage（合法阶段：${SPECC_STAGES[*]}）"
+  (( idx >= 0 )) || die "未知阶段：${stage}（合法阶段：${SPECC_STAGES[*]}）"
 
   # 第一个阶段（specify）无前置
   (( idx == 0 )) && return 0
@@ -111,7 +111,7 @@ pipeline_run_stage() {
 
   # 6) 全部通过：状态落盘
   state_set "$fdir" "gates.$stage" "approved"
-  state_history_add "$fdir" "阶段完成：$stage（自动门禁 + 人工审查均通过）"
+  state_history_add "$fdir" "阶段完成：${stage}（自动门禁 + 人工审查均通过）"
   log_ok "阶段【$stage】完成 ✔"
 
   # 提示下一阶段
