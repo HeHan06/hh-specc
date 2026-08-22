@@ -78,6 +78,19 @@ assemble_context() {
 
   # 5) 阶段指令（放最后，靠近执行要求）
   _append_file "$SPECC_DIR/prompts/$stage.md" "本阶段指令"
+
+  # 6) specify 阶段：注入需求描述（替换阶段指令中的 {REQUIREMENT_TEXT} 占位符）
+  #    需求描述是 specify 的唯一需求输入口，由 ./specc.sh new 落盘到 requirement.md
+  if [[ "$stage" == "specify" ]]; then
+    local req_file="$fdir/requirement.md"
+    if [[ -f "$req_file" ]]; then
+      _append_file "$req_file" "需求描述（原始输入，请注入指令中的 {REQUIREMENT_TEXT}）"
+    else
+      echo ""
+      echo "========== ⚠ 警告：未找到需求描述（$req_file）=========="
+      echo "specify 阶段缺少需求输入，产物可能为空或不完整。请先补充需求描述。"
+    fi
+  fi
 }
 
 # ---- 组装并落盘（供引擎调用与人工检视）----

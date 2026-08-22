@@ -82,9 +82,12 @@ cmd_init() {
 }
 
 # ---- new：创建需求工作目录（验收用例 TC-A2：重复创建报错不覆盖）----
+# 用法：./specc.sh new <需求ID> ["需求描述"]
+# 携带描述时写入 requirement.md，供 specify 阶段注入 {REQUIREMENT_TEXT}
 cmd_new() {
   local fid="${1:-}"
-  [[ -n "$fid" ]] || die "缺少需求ID，用法：./specc.sh new <需求ID>"
+  local requirement="${2:-}"
+  [[ -n "$fid" ]] || die "缺少需求ID，用法：./specc.sh new <需求ID> [\"需求描述\"]"
   require_init
   # 需求ID合法性：仅允许字母数字与连字符（防止路径穿越）
   [[ "$fid" =~ ^[A-Za-z0-9][A-Za-z0-9-]*$ ]] || die "需求ID只允许字母、数字与连字符，且以字母数字开头"
@@ -97,6 +100,14 @@ cmd_new() {
   mkdir -p "$fdir/contracts"
   state_init "$fdir" "$fid"
   log_ok "需求工作目录已创建：$fdir"
+
+  if [[ -n "$requirement" ]]; then
+    # 需求描述落盘：specify 阶段的唯一需求输入口
+    printf '%s\n' "$requirement" > "$fdir/requirement.md"
+    log_ok "需求描述已记录：$fdir/requirement.md"
+  else
+    log_warn "未携带需求描述：请将需求写入 $fdir/requirement.md 后再执行 specify"
+  fi
   log_info "开始第一阶段：./specc.sh specify $fid"
 }
 
@@ -162,6 +173,15 @@ main() {
       require_init
       local fdir; fdir="$(require_feature "$fid")"
       pipeline_redo "$stage" "$fdir"
+      ;;
+    approve|reject)
+      # 异步审批命令：人工审查产物后通过/否决（配合人工检查点异步模式）
+      shift
+      local fid="${1:-}" opinion="${2:-}"
+      [[ -n "$fid" ]] || die "用法：./specc.sh approve|reject <需求ID> [意见]"
+      require_init
+      local fdir; fdir="$(require_feature "$fid")"
+      pipeline_review "$cmd" "$fdir" "$opinion"
       ;;
     specify|clarify|plan|tasks|implement|verify)
       local stage="$cmd"; shift

@@ -97,7 +97,12 @@ gate_auto_run() {
 
 # ---- 人工检查点：暂停等待人工审查（✋）----
 # 需要人工审查的阶段：specify / plan / verify（对应 02 文档门禁汇总）
-# 交互：approve 通过 ｜ reject 否决（附意见，记入审计链）
+# 两种模式：
+#   交互模式（终端直连）：approve 通过 ｜ reject 否决（附意见，记入审计链）
+#   异步审批模式（非交互，如脚本/CI/IDE Agent 代跑）：不阻塞等待，
+#     返回特殊码 2，由流程引擎将门禁置为 awaiting_review，
+#     人工审查后通过 ./specc.sh approve / reject 完成审批
+#   ——这正是未来产品化时"人工检查点异步化"的提前落地（见产品化讨论）
 gate_human_review() {
   local stage="$1" fdir="$2"
   case "$stage" in
@@ -105,12 +110,17 @@ gate_human_review() {
     *) return 0 ;;                 # 其余阶段自动通过
   esac
 
-  echo ""
-  echo "============================================================"
-  echo "✋ 人工检查点：阶段【${stage}】产物已生成，请人工审查"
-  echo "   需求目录：$fdir"
-  echo "   审查通过后选择 approve；有问题选择 reject 并填写意见"
-  echo "============================================================"
+  # 非交互环境：切换为异步审批模式
+  if [[ ! -t 0 ]]; then
+    echo ""
+    echo "============================================================"
+    echo "✋ 人工检查点（异步模式）：阶段【${stage}】产物已生成，等待人工审查"
+    echo "   需求目录：$fdir"
+    echo "   审查通过后执行：./specc.sh approve $(basename "$fdir")"
+    echo "   否决并附意见　：./specc.sh reject $(basename "$fdir") <意见>"
+    echo "============================================================"
+    return 2
+  fi
 
   local decision opinion
   while true; do

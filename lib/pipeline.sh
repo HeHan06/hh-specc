@@ -56,8 +56,16 @@ pipeline_check_precondition() {
 
 # ---- 执行单个阶段 ----
 # 流程：前置检查 → 组装上下文 → 引擎执行 → 自动门禁 → 人工检查点 → 状态落盘
+# 重入规则（异步审批配套）：若本阶段门禁已是 approved（人工审批已通过），
+# 直接返回成功，避免重复跑引擎（./specc.sh approve 后重跑命令即走此分支）
 pipeline_run_stage() {
   local stage="$1" fdir="$2"
+
+  # 0) 已通过则幂等跳过
+  if [[ "$(state_get "$fdir" "gates.$stage")" == "approved" ]]; then
+    log_ok "阶段【${stage}】已通过审批，跳过执行"
+    return 0
+  fi
 
   # 1) 前置条件检查
   pipeline_check_precondition "$stage" "$fdir" || return 1
@@ -110,7 +118,15 @@ pipeline_run_stage() {
   fi
 
   # 5) 人工检查点（✋ 后置）
-  if ! gate_human_review "$stage" "$fdir"; then
+  # 返回码：0=交互模式直接通过；1=否决；2=异步模式待审批
+  local review_rc=0
+  gate_human_review "$stage" "$fdir" || review_rc=$?
+  if (( review_rc == 2 )); then
+    state_set "$fdir" "gates.$stage" "awaiting_review"
+    state_history_add "$fdir" "阶段 $stage 产物已生成，等待人工审批（异步模式）"
+    log_warn "阶段 $stage 已生成产物，等待人工审批：./specc.sh approve $(basename "$fdir")"
+    return 2
+  elif (( review_rc != 0 )); then
     state_set "$fdir" "gates.$stage" "rejected"
     return 1
   fi
@@ -145,4 +161,41 @@ pipeline_redo() {
   state_set "$fdir" "stage" "$stage"
   state_history_add "$fdir" "redo：重置阶段 $stage 及其后所有门禁"
   log_ok "已重置：从【${stage}】开始的所有阶段门禁（之前阶段保留）"
+}
+
+# ---- 异步审批：对处于 awaiting_review 的阶段执行 approve / reject ----
+# approve：门禁置 approved，记录审计，提示下一阶段
+# reject ：门禁置 rejected，意见记入审计链，需修改产物后重跑该阶段
+pipeline_review() {
+  local action="$1" fdir="$2" opinion="${3:-}"
+
+  # 找到处于待审批状态的阶段（正常流程中最多只有一个）
+  local stage="" s g
+  for s in "${SPECC_STAGES[@]}"; do
+    g="$(state_get "$fdir" "gates.$s")"
+    if [[ "$g" == "awaiting_review" ]]; then
+      stage="$s"
+      break
+    fi
+  done
+  [[ -n "$stage" ]] || die "当前没有处于待审批（awaiting_review）状态的阶段"
+
+  case "$action" in
+    approve)
+      state_set "$fdir" "gates.$stage" "approved"
+      state_history_add "$fdir" "人工审查：阶段 $stage 通过（approve，异步）"
+      log_ok "阶段【${stage}】审查通过 ✔"
+      local next_idx; next_idx=$(( $(stage_index "$stage") + 1 ))
+      if (( next_idx < ${#SPECC_STAGES[@]} )); then
+        log_info "下一阶段：${SPECC_STAGES[$next_idx]}（./specc.sh ${SPECC_STAGES[$next_idx]} $(basename "$fdir")）"
+      else
+        log_ok "六阶段全部完成！可执行 ./specc.sh archive $(basename "$fdir") 归档（v0.2）"
+      fi
+      ;;
+    reject)
+      state_set "$fdir" "gates.$stage" "rejected"
+      state_history_add "$fdir" "人工审查：阶段 $stage 否决（reject，异步）——意见：${opinion:-未填写}"
+      log_warn "阶段【${stage}】被否决（意见：${opinion:-未填写}），请修改产物后重跑：./specc.sh $stage $(basename "$fdir")"
+      ;;
+  esac
 }
