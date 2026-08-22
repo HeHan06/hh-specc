@@ -72,7 +72,10 @@ engine_run_manual() {
   out_dir="$(cfg_get 'engine.output_dir' '.specc-cache/prompts')"
   mkdir -p "$SPECC_ROOT/$out_dir"
   local saved="$SPECC_ROOT/$out_dir/$(basename "$fdir")-${stage}.prompt.md"
-  cp "$prompt_file" "$saved"
+  # 源与目标可能同名（pipeline 组装与 manual 输出同路径），判等则跳过拷贝
+  if [[ "$(cd "$(dirname "$prompt_file")" && pwd)/$(basename "$prompt_file")" != "$(cd "$(dirname "$saved")" && pwd)/$(basename "$saved")" ]]; then
+    cp "$prompt_file" "$saved"
+  fi
 
   echo ""
   echo "============================================================"

@@ -46,7 +46,7 @@ pipeline_check_precondition() {
     prev="${SPECC_STAGES[$i]}"
     local g; g="$(state_get "$fdir" "gates.$prev")"
     if [[ "$g" != "approved" ]]; then
-      log_error "前置条件不满足：阶段【$prev】尚未通过（当前状态：${g:-pending}）"
+      log_error "前置条件不满足：阶段【${prev}】尚未通过（当前状态：${g:-pending}）"
       log_error "请先完成前置阶段，禁止跳阶段（宪法 5.4）"
       return 1
     fi
@@ -85,7 +85,13 @@ pipeline_run_stage() {
     verify)    extras+=("$fdir/spec.md" "$fdir/tasks.md")
                [[ -f "$fdir/plan.md" ]] && extras+=("$fdir/plan.md") ;;
   esac
-  assemble_to_file "$stage" "$fdir" "$prompt_file" "${extras[@]}" >/dev/null
+  # 注意：macOS 自带 bash 3.2 在 set -u 下，空数组展开 "${extras[@]}" 会报
+  # unbound variable，必须先判空再展开
+  if (( ${#extras[@]} > 0 )); then
+    assemble_to_file "$stage" "$fdir" "$prompt_file" "${extras[@]}" >/dev/null
+  else
+    assemble_to_file "$stage" "$fdir" "$prompt_file" >/dev/null
+  fi
   log_info "上下文已组装：$prompt_file"
 
   # 3) 引擎执行（codex 或 manual 退化）
@@ -112,7 +118,7 @@ pipeline_run_stage() {
   # 6) 全部通过：状态落盘
   state_set "$fdir" "gates.$stage" "approved"
   state_history_add "$fdir" "阶段完成：${stage}（自动门禁 + 人工审查均通过）"
-  log_ok "阶段【$stage】完成 ✔"
+  log_ok "阶段【${stage}】完成 ✔"
 
   # 提示下一阶段
   local next_idx; next_idx=$(( $(stage_index "$stage") + 1 ))
@@ -138,5 +144,5 @@ pipeline_redo() {
   done
   state_set "$fdir" "stage" "$stage"
   state_history_add "$fdir" "redo：重置阶段 $stage 及其后所有门禁"
-  log_ok "已重置：从【$stage】开始的所有阶段门禁（之前阶段保留）"
+  log_ok "已重置：从【${stage}】开始的所有阶段门禁（之前阶段保留）"
 }

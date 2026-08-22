@@ -40,10 +40,14 @@ gate_check_tasks() {
   reqs="$(grep -oE 'Req-[0-9]+' "$spec" | sort -u)"
   [[ -n "$reqs" ]] || { log_error "门禁失败：spec.md 未找到任何 Req 编号"; return 1; }
 
+  # 只统计任务正文中的回链行（含「回链」字样的行）：
+  # 防止注释/标题中顺带提到某需求编号被误判为"已覆盖"（S3 测试 4 暴露的弱点）
+  local trace_lines
+  trace_lines="$(grep '回链' "$tasks" 2>/dev/null || true)"
+
   local r
   while IFS= read -r r; do
-    # tasks.md 中任意位置出现该编号即视为已覆盖（回链）
-    grep -q "$r" "$tasks" || missing="$missing $r"
+    echo "$trace_lines" | grep -q "$r" || missing="$missing $r"
   done <<< "$reqs"
 
   if [[ -n "$missing" ]]; then
@@ -103,7 +107,7 @@ gate_human_review() {
 
   echo ""
   echo "============================================================"
-  echo "✋ 人工检查点：阶段【$stage】产物已生成，请人工审查"
+  echo "✋ 人工检查点：阶段【${stage}】产物已生成，请人工审查"
   echo "   需求目录：$fdir"
   echo "   审查通过后选择 approve；有问题选择 reject 并填写意见"
   echo "============================================================"
