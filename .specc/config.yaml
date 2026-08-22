@@ -1,0 +1,34 @@
+# ============================================================
+# specc 平台配置（M9 配置管理）
+# 安全约定：
+#   - 本文件只放非敏感配置，可入库
+#   - API 密钥一律走环境变量（如 DASHSCOPE_API_KEY），禁止写入本文件
+# ============================================================
+
+# ---- 引擎配置 ----
+engine:
+  # 引擎类型：codex（调用 Codex Harness）| manual（产物模式：输出提示词由人工在任意 IDE 执行）
+  type: codex
+  # 提示词组装结果的输出目录（manual 模式与调试用）
+  output_dir: .specc-cache/prompts
+
+# ---- 模型配置（可切换，不硬编码）----
+model:
+  # 模型 ID：可按需替换为百炼控制台的其他模型
+  id: qwen3.8-max
+  # OpenAI 兼容端点（阿里云百炼兼容模式）
+  base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  # 密钥所在的环境变量名（密钥本身不入库）
+  api_key_env: DASHSCOPE_API_KEY
+
+# ---- 流程配置 ----
+pipeline:
+  # 流程裁剪：full（六阶段全走）；light / change 为 v0.2 规划
+  profile: full
+  # 上下文组装的体积告警阈值（字符数），超过则提示裁剪
+  context_warn_chars: 60000
+
+# ---- 任务执行配置（implement 阶段）----
+tasks:
+  # 单任务自动重试次数（超过则挂起转人工，见 implement 阶段指令）
+  max_retry: 1
