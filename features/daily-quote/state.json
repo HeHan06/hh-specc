@@ -1,14 +1,14 @@
 {
   "feature": "daily-quote",
   "created_at": "2026-08-22T23:43:24",
-  "stage": "implement",
+  "stage": "verify",
   "gates": {
     "specify": "approved",
     "clarify": "approved",
     "plan": "approved",
     "tasks": "approved",
     "implement": "approved",
-    "verify": "pending"
+    "verify": "awaiting_review"
   },
   "tasks": {
     "T-01": "done",
@@ -205,6 +205,22 @@
     {
       "ts": "2026-08-24T00:23:48",
       "text": "阶段完成：implement（逐任务全部实现）"
+    },
+    {
+      "ts": "2026-08-24T00:49:18",
+      "text": "阶段开始：verify"
+    },
+    {
+      "ts": "2026-08-24T01:06:00",
+      "text": "verify 报告已生成（结论：不通过，1 个阻断项——后端缺启动类）"
+    },
+    {
+      "ts": "2026-08-24T01:07:00",
+      "text": "阻断项已修复：新增 DailyQuoteApplication 启动类，mvn package 通过并产出可运行 JAR"
+    },
+    {
+      "ts": "2026-08-24T01:08:00",
+      "text": "verify 报告更新为「有条件通过」，等待人工终审"
     }
   ]
 }
