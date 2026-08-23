@@ -61,6 +61,12 @@ pipeline_check_precondition() {
 pipeline_run_stage() {
   local stage="$1" fdir="$2"
 
+  # implement 阶段与其它「单一有界调用」阶段不同，走逐任务循环
+  if [[ "$stage" == "implement" ]]; then
+    pipeline_run_implement "$fdir"
+    return $?
+  fi
+
   # 0) 已通过则幂等跳过
   if [[ "$(state_get "$fdir" "gates.$stage")" == "approved" ]]; then
     log_ok "阶段【${stage}】已通过审批，跳过执行"
@@ -145,6 +151,139 @@ pipeline_run_stage() {
   else
     log_ok "六阶段全部完成！可执行 ./specc.sh archive $(basename "$fdir") 归档（v0.2）"
   fi
+  return 0
+}
+
+# ---- 从 tasks.md 提取单个任务块（### T-NN 到下一个 ### 或文件尾）----
+# 用法：extract_task_block <tasks.md路径> <任务ID如T-01>
+# 说明：任务头形如「### T-01：...」，全角/半角冒号均兼容
+extract_task_block() {
+  local file="$1" tid="$2"
+  awk -v id="$tid" '
+    $0 ~ ("^### " id "[：:]") { found=1; print; next }
+    found && /^### / { exit }
+    found { print }
+  ' "$file"
+}
+
+# ---- 执行 implement 阶段的单个任务（一个任务 = 一次有界引擎调用）----
+# 流程：提取任务块 → 按工程组装上下文 → 引擎生成代码并跑该任务验证 → 失败重试 1 次 → 回填 state.json
+# 验证命令由引擎（codex）在其工作流内自行执行；本函数只负责编排与状态记录
+implement_run_one_task() {
+  local fdir="$1" tasks_file="$2" tid="$3"
+
+  # 断点续跑：已完成的重复任务跳过
+  if [[ "$(state_get "$fdir" "tasks.$tid")" == "done" ]]; then
+    log_info "任务 ${tid} 已完成，跳过"
+    return 0
+  fi
+
+  log_info "==> 任务 ${tid} 开始"
+
+  # 提取任务块（多行 markdown）
+  local task_block
+  task_block="$(extract_task_block "$tasks_file" "$tid")"
+  [[ -n "$task_block" ]] || { log_error "无法从 tasks.md 提取任务 ${tid}"; return 1; }
+
+  # 提取所属工程（端/工程 字段），用于按工程注入平台规范
+  local proj
+  proj="$(printf '%s\n' "$task_block" | grep -m1 '端/工程' | sed 's/.*：//' | tr -d '[:space:]')"
+
+  state_set "$fdir" "tasks.$tid" "running"
+  state_history_add "$fdir" "任务 $tid 开始（工程：${proj:-未知}）"
+
+  # 组装该任务的上下文并落盘
+  local prompt_file
+  prompt_file="$SPECC_ROOT/$(cfg_get 'engine.output_dir' '.specc-cache/prompts')/$(basename "$fdir")-implement-${tid}.prompt.md"
+  mkdir -p "$(dirname "$prompt_file")"
+  assemble_implement_task "$fdir" "$task_block" "$proj" "$prompt_file"
+  log_info "上下文已组装：$prompt_file"
+
+  # 引擎执行：codex 在内部生成代码并运行该任务自带验证命令
+  local deliverables="- 任务 ${tid} 涉及文件中的源代码 + 单元测试（写入工作区，不自动 commit）"
+  if engine_run "implement" "$fdir" "$prompt_file" "$deliverables"; then
+    state_set "$fdir" "tasks.$tid" "done"
+    state_history_add "$fdir" "任务 $tid 完成"
+    log_ok "任务 $tid 完成 ✔"
+    return 0
+  fi
+
+  # 引擎失败：自动重试 1 次（追加失败反馈，让模型先修复再重跑验证）
+  log_warn "任务 ${tid} 引擎执行失败，自动重试 1 次"
+  state_history_add "$fdir" "任务 $tid 引擎失败，重试中"
+  {
+    echo ""
+    echo "---"
+    echo "【重试说明】上一次执行未通过。请先检查你刚才生成的代码与其验证命令结果，"
+    echo "修复任务 ${tid} 涉及文件中的问题后，重新运行该任务的验证命令并确保通过。"
+  } >> "$prompt_file"
+
+  if engine_run "implement" "$fdir" "$prompt_file" "$deliverables"; then
+    state_set "$fdir" "tasks.$tid" "done"
+    state_history_add "$fdir" "任务 $tid 重试后完成"
+    log_ok "任务 $tid 完成 ✔（重试）"
+    return 0
+  fi
+
+  state_set "$fdir" "tasks.$tid" "failed"
+  state_history_add "$fdir" "任务 $tid 重试后仍失败，挂起待人工介入"
+  log_error "任务 ${tid} 重试后仍失败，挂起"
+  return 1
+}
+
+# ---- implement 阶段：逐任务循环（验收用例 TC-G2/H1.4，设计文档 02 第⑤步）----
+# 规则：按 tasks.md 顺序逐个执行；任一任务重试后仍失败则挂起，后续任务不再执行
+pipeline_run_implement() {
+  local fdir="$1"
+
+  # 0) 已通过则幂等跳过
+  if [[ "$(state_get "$fdir" "gates.implement")" == "approved" ]]; then
+    log_ok "阶段【implement】已通过审批，跳过执行"
+    return 0
+  fi
+
+  # 1) 前置条件检查（tasks 必须已通过）
+  pipeline_check_precondition "implement" "$fdir" || return 1
+
+  state_set "$fdir" "stage" "implement"
+  state_set "$fdir" "gates.implement" "running"
+  state_history_add "$fdir" "阶段开始：implement（逐任务循环）"
+
+  # 2) 解析任务清单（按 tasks.md 中出现顺序）
+  local tasks_file="$fdir/tasks.md"
+  [[ -f "$tasks_file" ]] || {
+    state_set "$fdir" "gates.implement" "gate_failed"
+    state_history_add "$fdir" "阶段 implement 失败：缺少 tasks.md"
+    log_error "缺少任务清单：$tasks_file（请先完成 tasks 阶段）"
+    return 1
+  }
+  local task_ids
+  task_ids="$(grep -oE '^### T-[0-9]+' "$tasks_file" | sed 's/^### //')"
+  [[ -n "$task_ids" ]] || {
+    state_set "$fdir" "gates.implement" "gate_failed"
+    log_error "tasks.md 中未解析到任何任务（形如 ### T-01）"
+    return 1
+  }
+
+  # 3) 逐任务执行
+  local tid failed=0
+  while IFS= read -r tid; do
+    [[ -n "$tid" ]] || continue
+    implement_run_one_task "$fdir" "$tasks_file" "$tid" || { failed=1; break; }
+  done <<< "$task_ids"
+
+  # 4) 结果落盘
+  if (( failed == 1 )); then
+    state_set "$fdir" "gates.implement" "gate_failed"
+    state_history_add "$fdir" "阶段 implement 挂起：存在失败任务，需人工介入后重跑"
+    log_error "implement 阶段挂起：存在失败任务（./specc.sh status 查看进度，修复后重跑 ./specc.sh implement）"
+    return 1
+  fi
+
+  state_set "$fdir" "gates.implement" "approved"
+  state_history_add "$fdir" "阶段完成：implement（逐任务全部实现）"
+  log_ok "阶段【implement】完成 ✔"
+  log_info "下一阶段：verify（./specc.sh verify $(basename "$fdir")）"
   return 0
 }
 

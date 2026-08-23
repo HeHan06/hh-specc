@@ -110,6 +110,60 @@ assemble_to_file() {
   echo "$outfile"
 }
 
+# ---- 组装 implement 阶段单个任务的提示词 ----
+# 与通用 assemble_context 的区别：
+#   - 按任务所属工程注入对应平台规范（而非固定 api-conventions）
+#   - 将 implement 指令中的 {CURRENT_TASK} 占位符替换为当前任务块
+# 用法：assemble_implement_task <需求目录> <任务块> <所属工程> <输出文件>
+assemble_implement_task() {
+  local fdir="$1" task_block="$2" proj="$3" outfile="$4"
+  mkdir -p "$(dirname "$outfile")"
+
+  # 平台层规范：按工程映射（与 implement.md 指令第 3 点一致）
+  local pf
+  case "$proj" in
+    backend)     pf="api-conventions.md" ;;
+    web-admin)   pf="web-admin-standards.md api-conventions.md" ;;
+    miniprogram) pf="miniprogram-standards.md api-conventions.md" ;;
+    shared)      pf="dual-end-boundary.md api-conventions.md" ;;
+    *)           pf="api-conventions.md" ;;
+  esac
+
+  # 1~5 步：宪法 + 平台规范 + 业务层 + plan + contracts（与 assemble_context 同构）
+  {
+    _append_file "$SPECC_DIR/constitution.md" "宪法（强制遵守）"
+    local f
+    for f in $pf; do
+      _append_file "$SPECC_DIR/platform/$f" "平台层知识"
+    done
+    local bf
+    for bf in business.md data-model.md flows.md; do
+      _append_file "$SPECC_DIR/project/$bf" "业务层知识"
+    done
+    _append_file "$fdir/plan.md" "阶段输入产物"
+    if [[ -d "$fdir/contracts" ]]; then
+      local c
+      for c in "$fdir"/contracts/*; do
+        [[ -f "$c" ]] && _append_file "$c" "阶段输入产物"
+      done
+    fi
+    echo ""
+    echo "========== 本阶段指令（implement.md）=========="
+    echo ""
+  } > "$outfile"
+
+  # 6：implement 指令，替换 {CURRENT_TASK} 为当前任务块（多行替换交给 python3 处理更可靠）
+  python3 - "$SPECC_DIR/prompts/implement.md" "$task_block" >> "$outfile" <<'PYEOF'
+import sys
+prompt_path, task_block = sys.argv[1], sys.argv[2]
+content = open(prompt_path, encoding="utf-8").read()
+content = content.replace("{CURRENT_TASK}", task_block)
+sys.stdout.write(content)
+PYEOF
+
+  echo "$outfile"
+}
+
 # ---- 简易配置读取（从 .specc/config.yaml 取 key，取不到用默认值）----
 # 用法：cfg_get 'pipeline.context_warn_chars' '60000'
 cfg_get() {
