@@ -27,6 +27,39 @@ engine_codex_available() {
   return 0
 }
 
+# ---- 根据 .specc/config.yaml 动态生成 Codex 配置 ----
+# 目的：切换模型只需改 config.yaml 的 model 段，无需手改 ~/.codex/config.toml。
+# 输出：写入 CODEX_HOME 下的 config.toml（IDE 沙箱不可写 ~/.codex 时同样生效）
+_gen_codex_config() {
+  local out="$1"
+  local provider provider_name model_id base_url wire_api key_env
+  provider="$(cfg_get 'model.provider' 'deepseek')"
+  provider_name="$(cfg_get 'model.provider_name' 'DeepSeek')"
+  model_id="$(cfg_get 'model.id' 'deepseek-v4-pro')"
+  base_url="$(cfg_get 'model.base_url' 'https://api.deepseek.com')"
+  wire_api="$(cfg_get 'model.wire_api' 'responses')"
+  key_env="$(cfg_get 'model.api_key_env' 'DEEPSEEK_API_KEY')"
+
+  # 沙箱固定为 danger-full-access：Codex 运行在 IDE 沙箱内，其自身沙箱
+  # 需 OS 级机制（Seatbelt/Landlock），嵌套环境会持续失败（实测）。安全边界由外层兜底。
+  cat > "$out" <<EOF
+# 由 specc 引擎适配层根据 .specc/config.yaml 自动生成，勿手改
+model_provider = "$provider"
+model = "$model_id"
+approval_policy = "on-request"
+sandbox_mode = "danger-full-access"
+
+[model_providers.$provider]
+name = "$provider_name"
+base_url = "$base_url"
+wire_api = "$wire_api"
+env_key = "$key_env"
+
+[projects."${SPECC_ROOT}"]
+trust_level = "trusted"
+EOF
+}
+
 # ---- codex 适配器：执行一次有界阶段任务 ----
 # 用法：engine_run_codex <阶段名> <需求目录> <提示词文件> <产物说明>
 # 说明：一个阶段=一次有界调用；产物由模型按指令落盘到约定路径
@@ -60,12 +93,10 @@ ${deliverables}
 
   # Codex 状态目录重定向：默认 ~/.codex 在 IDE 沙箱内可能不可写（实测暴露），
   # 重定向到项目内 .specc-cache/codex-home（已被 .gitignore 覆盖，不入库）。
-  # 首次使用时从 ~/.codex/config.toml 复制端点配置。
+  # 配置由 _gen_codex_config 根据 config.yaml 动态生成，无需依赖 ~/.codex。
   local codex_home="$SPECC_ROOT/$(cfg_get 'engine.output_dir' '.specc-cache')/codex-home"
   mkdir -p "$codex_home"
-  if [[ ! -f "$codex_home/config.toml" && -f "$HOME/.codex/config.toml" ]]; then
-    cp "$HOME/.codex/config.toml" "$codex_home/config.toml"
-  fi
+  _gen_codex_config "$codex_home/config.toml"
   export CODEX_HOME="$codex_home"
 
   # codex exec：非交互模式、跳过 git 仓库检查（本仓库可能刚初始化）

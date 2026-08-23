@@ -13,13 +13,20 @@ engine:
   output_dir: .specc-cache/prompts
 
 # ---- 模型配置（可切换，不硬编码）----
+# 切换模型只需修改本段，lib/engines.sh 会自动据此生成 Codex 配置。
 model:
-  # 模型 ID：可按需替换为百炼控制台的其他模型
-  id: qwen3.8-max
-  # OpenAI 兼容端点（阿里云百炼兼容模式）
-  base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  # 模型 ID
+  id: deepseek-v4-pro
+  # provider 标识：对应 Codex config.toml 的 model_provider（可自定义）
+  provider: deepseek
+  # provider 显示名（仅用于 Codex 配置展示）
+  provider_name: DeepSeek
+  # OpenAI 兼容端点（DeepSeek 官方端点，原生支持 Responses API）
+  base_url: https://api.deepseek.com
+  # 协议：responses（Codex v0.144+ 默认；DeepSeek V4 正式版原生支持）
+  wire_api: responses
   # 密钥所在的环境变量名（密钥本身不入库）
-  api_key_env: DASHSCOPE_API_KEY
+  api_key_env: DEEPSEEK_API_KEY
 
 # ---- 流程配置 ----
 pipeline:
