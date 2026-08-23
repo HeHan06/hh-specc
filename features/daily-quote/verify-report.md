@@ -92,7 +92,7 @@
 
 ## 6. 结论与遗留项
 
-**结论：有条件通过**（阻断项已修复，遗留项待人工终审）
+**结论：端到端验证通过**（阻断项已修复，遗留项待人工终审）
 
 ### 阻断项（已修复 ✅）
 1. ~~后端缺失 Spring Boot 启动类~~ → 已新增 `backend/src/main/java/com/dailyquote/quote/DailyQuoteApplication.java`，`./mvnw -DskipTests package` 已通过并产出可运行 JAR。
@@ -100,8 +100,32 @@
 ### 遗留项（需人工终审确认，非本阶段阻断）
 1. 错误码 `1001` 未登记进契约错误码表、未进入 shared 文案映射。
 2. `shared/constants/error-code-text.js` 与 `truncateQuoteText` 已实现但未接入两端页面渲染路径。
-3. 数据库迁移未在本机执行（无 `psql`/无 DB），DDL 与种子脚本仅经人工审阅，未做真实库验证。
+3. ~~数据库迁移未在本机执行~~ → 已在端到端验证中执行（见第 7 节）。
 4. 小程序 `npm run build:weapp` 为自定义 Babel 编译 + 包体积校验脚本，未运行官方 `@tarojs/cli build --type weapp`；真实微信产物打包与 shared 跨目录打包需人工/集成环境确认。
 5. AC1.4/AC1.5/AC8.3/AC8.4 涉及运营批量预置数据的体积/版权/格式约束，需人工按真实语料复核。
+
+---
+
+## 7. 端到端验证（真实启动，人工补验）
+
+verify 阶段原为「只读 + 单测 + 构建」，未真实启动服务，因而漏掉了 3 个运行时缺陷。本机人工补验（启动 PostgreSQL 16 → 建库 → 迁移 → 启动后端 → curl）逐一暴露并修复：
+
+| # | 缺陷 | 根因 | 修复 |
+|---|---|---|---|
+| 1 | `GET /api/quotes/today` 500 | MyBatis 未扫描到 Mapper XML，报 `Invalid bound statement`；单测 mock 了 Mapper 而掩盖 | `application.yml` 显式配置 `mybatis.mapper-locations: classpath*:mapper/**/*.xml` |
+| 2 | 异常被静默吞掉 | `GlobalExceptionHandler.handleUnexpectedException` 未打印堆栈，违反宪法 7.3 | 补 `log.error` 打印完整堆栈 |
+| 3 | `GET /` 与静态资源 500 | ① WebMvcConfig 的 `/{path:[^\\.]*}/**` 规则吞掉 `/assets/**` 静态资源；② web-admin 构建产物未集成进后端 static | ① 删除多段 forward 规则；② pom.xml 增加 resource 将 `../web-admin/dist` 打包进 `static/` |
+
+**最终端到端验证结果（全部 200）：**
+
+| 端点 | 状态 | 说明 |
+|---|---|---|
+| `GET /api/quotes/today`（兜底路径） | ✅ 200 | 返回《自渡》兜底语录四要素 |
+| `GET /api/quotes/today`（正常路径） | ✅ 200 | 插入 published 语录后返回已上架内容 |
+| `GET /` | ✅ 200 | 返回 index.html |
+| `GET /assets/index-*.js` / `*.css` | ✅ 200 | 前端构建产物 |
+| `GET /assets/images/fallback-bg.png` | ✅ 200 | 背景图 |
+
+> 结论：后端服务 + 数据库 + Web 静态托管 + API 全链路已在真实运行环境打通。前端展示链路（浏览器渲染）与小程序真机运行仍属人工终审范围。
 
 > 说明：本报告只读，未修改任何代码或规格。阻断项修复后应重新执行 verify 门禁。

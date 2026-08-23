@@ -12,5 +12,8 @@ spring:
     driver-class-name: org.postgresql.Driver
 
 mybatis:
+  # 显式指定 Mapper XML 位置：缺省时部分版本不自动扫描，会触发
+  # 「Invalid bound statement」运行时错误（单测 mock 了 Mapper，无法暴露此问题）
+  mapper-locations: classpath*:mapper/**/*.xml
   configuration:
     map-underscore-to-camel-case: true

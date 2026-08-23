@@ -1,6 +1,8 @@
 package com.dailyquote.quote.common;
 
 import com.dailyquote.quote.dto.ApiResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -13,6 +15,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     private static final int CODE_MISSING_FALLBACK_CONFIG = 2001;
     private static final int CODE_INVALID_QUOTE_FORMAT = 2002;
@@ -38,6 +42,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnexpectedException(Exception exception) {
+        // 宪法 7.3：禁止静默吞错。未预期异常必须打印堆栈，便于定位与上报。
+        log.error("未预期异常：{}", exception.getMessage(), exception);
         ApiResponse<Void> body = ApiResponse.error(CODE_SYSTEM_ERROR, "系统繁忙，请稍后再试");
         return ResponseEntity.internalServerError().body(body);
     }

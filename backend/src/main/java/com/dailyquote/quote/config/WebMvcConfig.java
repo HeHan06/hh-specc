@@ -17,7 +17,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
         registry.addViewController("/").setViewName("forward:/index.html");
+        // 仅对不含扩展名的单段前端路由回退到 index.html。
+        // 注意：不能用 /{path:[^\\.]*}/** 这类多段规则，否则会把
+        // /assets/images/fallback-bg.png、/assets/index-*.js 等静态资源也吞掉，
+        // 导致静态资源 forward 到 index.html 而 500。
         registry.addViewController("/{path:[^\\.]*}").setViewName("forward:/index.html");
-        registry.addViewController("/{path:[^\\.]*}/**").setViewName("forward:/index.html");
     }
 }

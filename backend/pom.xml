@@ -47,6 +47,20 @@
     </dependencies>
 
     <build>
+        <!--
+          将前端构建产物（web-admin/dist）打包进后端静态目录 static/，
+          由后端统一静态托管 Web 页面（T-09 设计：/ 返回 index.html）。
+          构建顺序：先 web-admin 执行 npm run build，再构建 backend。
+        -->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <resource>
+                <directory>../web-admin/dist</directory>
+                <targetPath>static</targetPath>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
