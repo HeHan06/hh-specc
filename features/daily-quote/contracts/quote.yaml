@@ -1,0 +1,49 @@
+# 接口契约：每日一句（quote）
+# 格式依据：.specc/platform/api-conventions.md 第 5 节
+# 效力：契约是前后端唯一真相源；implement 阶段禁止私改（宪法 4.3）
+# 门禁检查：四要素（统一响应体/错误码/认证/分页）缺一即失败
+
+module: 每日一句
+error-code-range: 2000-2099
+base-path: /api/quotes
+auth: JWT Bearer
+
+# ---- 统一响应体（所有接口遵守）----
+response-envelope:
+  code: int      # 0=成功；非 0=失败
+  message: string # 面向开发者的说明
+  data: object|null # 业务数据；失败时可为 null
+
+# ---- 分页约定（本期无分页接口，但后续列表接口必须遵守）----
+pagination:
+  request:
+    pageNum: { type: int, default: 1, desc: 页码，从 1 开始 }
+    pageSize: { type: int, default: 10, max: 100, desc: 每页条数 }
+    orderBy: { type: string, default: null, desc: "格式 字段,asc|desc；字段白名单后端校验" }
+  response:
+    data:
+      list: { type: array, desc: 数据列表 }
+      total: { type: int, desc: 总条数 }
+      pageNum: { type: int, desc: 当前页码 }
+      pageSize: { type: int, desc: 每页条数 }
+  applies-to: 无分页接口（本期）
+
+endpoints:
+  - method: GET
+    path: /today
+    summary: 获取今日语录（当日无内容时返回兜底内容）
+    auth: 公开（鉴权白名单）
+    audience: both
+    request: {}
+    response:
+      data:
+        - { field: content, type: string, desc: 语录正文；最长 60 字 }
+        - { field: source, type: string, desc: 出处；格式「《书名》—— 作者」 }
+        - { field: backgroundImage, type: string, desc: 背景图 URL；单图 ≤ 500KB }
+        - { field: displayDate, type: string, desc: 展示日期；格式 YYYY-MM-DD，Asia/Shanghai 日期 }
+    error-codes: [2001, 2002]
+
+# ---- 错误码表（四要素之一，必须登记）----
+error-code-table:
+  - { code: 2001, meaning: 当日无已上架语录且兜底配置缺失，无法返回内容, user-text: 内容加载失败，请稍后再试 }
+  - { code: 2002, meaning: 预置或兜底语录格式校验失败（正文/出处为空、出处格式不符或背景图缺失）, user-text: 内容配置异常，请稍后再试 }
