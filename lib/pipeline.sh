@@ -83,7 +83,9 @@ pipeline_run_stage() {
   # 收集本阶段的额外输入文件（上一阶段产物等）
   local extras=()
   case "$stage" in
-    clarify)   [[ -f "$fdir/spec.md" ]] && extras+=("$fdir/spec.md") ;;
+    clarify)   [[ -f "$fdir/spec.md" ]] && extras+=("$fdir/spec.md")
+               # 人工提前提供的澄清答案（可选）：若存在则注入，模型据此直接回填
+               [[ -f "$fdir/clarify-answers.md" ]] && extras+=("$fdir/clarify-answers.md") ;;
     plan)      [[ -f "$fdir/spec.md" ]] && extras+=("$fdir/spec.md") ;;
     tasks)     [[ -f "$fdir/plan.md" ]] && extras+=("$fdir/plan.md")
                # 契约文件一并注入
