@@ -266,11 +266,12 @@ pipeline_run_implement() {
   }
 
   # 3) 逐任务执行
+  # 注意：必须用 for 而非 while read <<<，否则 here-string 的 stdin 会泄漏进
+  # 引擎的 codex exec（实测 codex 会把剩余任务ID当作额外输入，干扰执行）
   local tid failed=0
-  while IFS= read -r tid; do
-    [[ -n "$tid" ]] || continue
+  for tid in $task_ids; do
     implement_run_one_task "$fdir" "$tasks_file" "$tid" || { failed=1; break; }
-  done <<< "$task_ids"
+  done
 
   # 4) 结果落盘
   if (( failed == 1 )); then

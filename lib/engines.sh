@@ -101,7 +101,8 @@ ${deliverables}
 
   # codex exec：非交互模式、跳过 git 仓库检查（本仓库可能刚初始化）
   # --full-auto：在沙箱内自动执行工具调用；高风险操作仍受审批策略约束
-  ( cd "$SPECC_ROOT" && codex exec --skip-git-repo-check "$exec_prompt" )
+  # </dev/null：切断 stdin，避免外层循环的 here-string/管道内容泄漏给 codex
+  ( cd "$SPECC_ROOT" && codex exec --skip-git-repo-check "$exec_prompt" </dev/null )
 }
 
 # ---- manual 退化适配器：输出提示词与产物清单，转人工执行 ----
