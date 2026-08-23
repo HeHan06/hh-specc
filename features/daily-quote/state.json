@@ -1,12 +1,12 @@
 {
   "feature": "daily-quote",
   "created_at": "2026-08-22T23:43:24",
-  "stage": "plan",
+  "stage": "tasks",
   "gates": {
     "specify": "approved",
     "clarify": "approved",
     "plan": "approved",
-    "tasks": "pending",
+    "tasks": "approved",
     "implement": "pending",
     "verify": "pending"
   },
@@ -63,6 +63,14 @@
     {
       "ts": "2026-08-23T18:38:00",
       "text": "阶段完成：plan（自动门禁通过：契约四要素齐备；人工审查 approve）"
+    },
+    {
+      "ts": "2026-08-23T22:24:34",
+      "text": "阶段开始：tasks"
+    },
+    {
+      "ts": "2026-08-23T22:32:33",
+      "text": "阶段完成：tasks（自动门禁 + 人工审查均通过）"
     }
   ]
 }
