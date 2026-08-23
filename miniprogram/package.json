@@ -1,0 +1,81 @@
+{
+  "name": "daily-quote-miniprogram",
+  "version": "0.1.0",
+  "private": true,
+  "description": "每日一句微信小程序（Taro React + 双端共享 shared/ 层）",
+  "scripts": {
+    "test": "jest",
+    "test:weapp": "TARO_ENV_JEST=weapp jest",
+    "build:weapp": "node scripts/build-weapp.js"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.23.9",
+    "@tarojs/components": "3.6.22",
+    "@tarojs/helper": "3.6.22",
+    "@tarojs/react": "3.6.22",
+    "@tarojs/runtime": "3.6.22",
+    "@tarojs/shared": "3.6.22",
+    "@tarojs/taro": "3.6.22",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.23.9",
+    "@babel/preset-env": "^7.23.9",
+    "@babel/preset-react": "^7.23.3",
+    "@babel/preset-typescript": "^7.23.3",
+    "@tarojs/plugin-framework-react": "3.6.22",
+    "@tarojs/plugin-platform-h5": "3.6.22",
+    "@tarojs/router": "3.6.22",
+    "@tarojs/taro-h5": "3.6.22",
+    "@tarojs/test-utils-react": "^0.1.1",
+    "babel-jest": "^29.7.0",
+    "babel-preset-taro": "3.6.22",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  },
+  "jest": {
+    "bail": 1,
+    "testEnvironment": "jsdom",
+    "testEnvironmentOptions": {
+      "url": "http://localhost/",
+      "customExportConditions": [
+        "node",
+        "node-addons"
+      ]
+    },
+    "testMatch": [
+      "<rootDir>/src/**/*.test.{js,jsx}"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/src/test/setup.js"
+    ],
+    "transform": {
+      "^.+\\.(js|jsx|ts|tsx)$": "@tarojs/test-utils-react/dist/jest/babel-transformer.js"
+    },
+    "transformIgnorePatterns": [],
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "json",
+      "jsx"
+    ],
+    "moduleNameMapper": {
+      "@tarojs/taro$": "@tarojs/test-utils-react/dist/jest/runtime/taro-h5.js",
+      "@tarojs/components$": "@tarojs/components/lib/react/index",
+      "\\.(scss|sass|css)$": "<rootDir>/src/test/style-mock.js"
+    },
+    "globals": {
+      "ENABLE_INNER_HTML": true,
+      "ENABLE_ADJACENT_HTML": true,
+      "ENABLE_SIZE_APIS": true,
+      "DEPRECATED_ADAPTER_COMPONENT": false,
+      "ENABLE_TEMPLATE_CONTENT": true,
+      "ENABLE_MUTATION_OBSERVER": true,
+      "ENABLE_CLONE_NODE": true,
+      "ENABLE_CONTAINS": true,
+      "__TARO_FRAMEWORK__": "react"
+    }
+  }
+}

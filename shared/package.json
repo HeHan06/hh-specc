@@ -1,0 +1,13 @@
+{
+  "name": "daily-quote-shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "每日一句双端共享纯逻辑层：常量、工具函数、API 客户端定义",
+  "scripts": {
+    "test:shared": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
+  }
+}

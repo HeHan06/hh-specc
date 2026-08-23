@@ -1,0 +1,81 @@
+:root {
+  color: #f8f8f4;
+  font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+.quote-page {
+  position: relative;
+  display: flex;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* 宽屏下背景图居中裁切，避免拉伸变形 */
+.quote-background {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.quote-overlay {
+  position: relative;
+  z-index: 1;
+  width: min(680px, calc(100vw - 48px));
+  padding: 40px 32px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.28);
+  text-align: center;
+}
+
+.quote-content {
+  margin: 0 0 24px;
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1.7;
+  letter-spacing: 1px;
+}
+
+.quote-source {
+  margin: 0 0 16px;
+  font-size: 16px;
+  opacity: 0.9;
+}
+
+.quote-date {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 2px;
+  opacity: 0.8;
+}
+
+.quote-loading {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+}
+
+.quote-error-hint {
+  margin: 16px 0 0;
+  font-size: 13px;
+  opacity: 0.75;
+}

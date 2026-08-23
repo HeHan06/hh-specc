@@ -1,0 +1,59 @@
+// 语录展示页：背景图铺满，文字居中叠加，保证清新、可读的展示效果。
+.quote-page {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  overflow: hidden;
+  background: #f4f0e8;
+}
+
+.quote-background {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.quote-overlay {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 0 48px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.quote-content {
+  max-width: 100%;
+  font-size: 36px;
+  line-height: 1.6;
+  color: #2b2b2b;
+  text-align: center;
+  word-break: break-all;
+}
+
+.quote-source {
+  margin-top: 32px;
+  font-size: 26px;
+  color: rgba(43, 43, 43, 0.72);
+  text-align: center;
+}
+
+.quote-date {
+  margin-top: 48px;
+  font-size: 24px;
+  color: rgba(43, 43, 43, 0.55);
+  letter-spacing: 1px;
+}
+
+.quote-loading {
+  display: block;
+  padding-top: 40vh;
+  font-size: 28px;
+  color: rgba(43, 43, 43, 0.5);
+  text-align: center;
+}

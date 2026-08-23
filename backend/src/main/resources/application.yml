@@ -1,0 +1,16 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: daily-quote-backend
+  datasource:
+    # 数据库连接信息仅从环境变量读取；仓库内不落任何数据库口令
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/daily_quote}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
