@@ -123,6 +123,8 @@ specc/                            # = 本仓库
                                └─────────────────┘
 ```
 
+> ⚠ 图中「M10 归档与规格库」为 **v0.2 规划，当前 v0.1 未实现**（`specs/` 与 `specc archive` 尚未落地，详见 §4 的 M10 章节）。
+
 ---
 
 ## 4. 模块详细设计
@@ -138,7 +140,7 @@ specc/                            # = 本仓库
 | `specc <stage>` | 执行指定阶段（specify/clarify/plan/tasks/implement/verify） |
 | `specc status` | 展示当前需求的阶段进度、门禁状态、未完成任务 |
 | `specc redo <stage>` | 重跑某阶段（人工修改产物后重新过门禁） |
-| `specc archive` | verify 通过后，规格归档进系统级规格库 |
+| `specc archive` | （规划中，v0.2 未实现）verify 通过后，规格归档进系统级规格库 |
 
 **边界**：CLI 不含业务逻辑，只做路由与交互；所有规则在流程引擎与门禁系统中。
 
@@ -252,7 +254,10 @@ features/<需求ID>/state.json
 | Codex 引擎配置 | `~/.codex/config.toml` | 本地全局，不入项目仓库 |
 | 流程开关 | `.specc/config.yaml` | profile（full/light/change）、门禁严格度 |
 
-### M10 归档与规格库
+### M10 归档与规格库（v0.2 规划，未实现）
+
+> ⚠ 本模块为 **v0.2 规划，当前 v0.1 未实现**：`specs/` 目录与 `specc archive` 命令尚未落地。
+> 归档是「版本迭代」链条的收尾动作（版本机制未定，归档格式就定不下来），故整体并入版本迭代一并实现，不单独提前。
 
 **职责**：解决规格漂移（Spec Drift）——规格不是一次性文档，而是随系统演进的活资产。
 
@@ -281,7 +286,7 @@ features/<需求ID>/state.json
        ├─ 通过 → 下一任务
        ├─ 失败 → 自动重试1次 → 仍失败则挂起（state 记录 failed 原因）
        └─ 全部完成 → verify 阶段
-  specc verify 通过 ──► specc archive ──► M10 合并进 specs/
+  specc verify 通过 ──► [v0.2] specc archive ──► M10 合并进 specs/
 ```
 
 ---
@@ -299,7 +304,7 @@ features/<需求ID>/state.json
 | M7 门禁检查系统 | `lib/gates/*.sh`（结构检查/契约校验/测试执行/人工检查点） |
 | M8 状态管理 | `features/<ID>/state.json` + `lib/state.sh` |
 | M9 配置管理 | `.specc/config.yaml` + 环境变量 |
-| M10 归档与规格库 | `specs/` + `lib/archive.sh` |
+| M10 归档与规格库 | `specs/` + `lib/archive.sh`（v0.2 规划，未实现） |
 | 代码工作区 | `projects/<需求ID>/` 下的 `web-admin/`、`miniprogram/`、`backend/`、`shared/`（工作区直写，不自动 commit） |
 
 > v0.1 选型说明：编排层用 shell 脚本（无构建、无依赖、可直接跑），核心复杂度在规格资产而非代码；若后续门禁逻辑复杂化，可迁移到 Node/Python 而不影响规格层。
@@ -319,7 +324,7 @@ features/<需求ID>/state.json
 | M7 门禁 | 结构检查 + 测试执行 + 人工检查点 | 契约一致性自动比对脚本增强、安全扫描闸门 |
 | M8 状态管理 | state.json + 断点续跑 | 多需求并行隔离 |
 | M9 配置 | 模型/端点可配置 | 多项目配置继承 |
-| M10 归档 | 基础归档进 specs/ | 规格漂移检测 |
+| M10 归档 | （推迟 v0.2，随版本迭代实现） | 归档进 specs/ + 规格漂移检测 |
 
 ---
 
