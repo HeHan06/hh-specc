@@ -67,7 +67,7 @@ cmd_init() {
 
   # 运行时目录（幂等创建；重复 init 不覆盖已修改的宪法——只建缺失目录）
   # 需求代码目录 projects/ 由 implement 阶段按需创建，不在此处预建
-  mkdir -p "$FEATURES_DIR" "$SPECS_DIR" "$PROJECTS_DIR"
+  mkdir -p "$FEATURES_DIR" "$PROJECTS_DIR"
 
   log_ok "specc 初始化完成：资产齐备，工作目录就绪"
   log_info "下一步：./specc.sh new <需求ID> 创建你的第一个需求"

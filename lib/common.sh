@@ -9,8 +9,8 @@
 # SPECC_ROOT：specc 仓库根目录（以 lib/common.sh 所在位置向上推导）
 SPECC_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SPECC_DIR="$SPECC_ROOT/.specc"          # 框架资产目录
-FEATURES_DIR="$SPECC_ROOT/features"     # 需求工作目录
-SPECS_DIR="$SPECC_ROOT/specs"           # 系统级规格库
+FEATURES_DIR="$SPECC_ROOT/features"     # 需求工作目录（规格产物）
+PROJECTS_DIR="$SPECC_ROOT/projects"     # 需求代码归档目录（每个需求一个子目录）
 
 # ---- 带颜色的日志输出（终端友好）----
 _c() { printf "\033[%sm%s\033[0m" "$1" "$2"; }   # 内部：上色辅助

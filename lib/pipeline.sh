@@ -150,7 +150,7 @@ pipeline_run_stage() {
   if (( next_idx < ${#SPECC_STAGES[@]} )); then
     log_info "下一阶段：${SPECC_STAGES[$next_idx]}（./specc.sh ${SPECC_STAGES[$next_idx]} $(basename "$fdir")）"
   else
-    log_ok "六阶段全部完成！可执行 ./specc.sh archive $(basename "$fdir") 归档（v0.2）"
+    log_ok "六阶段全部完成！需求【$(basename "$fdir")】已端到端实现完毕"
   fi
   return 0
 }
@@ -332,7 +332,7 @@ pipeline_review() {
       if (( next_idx < ${#SPECC_STAGES[@]} )); then
         log_info "下一阶段：${SPECC_STAGES[$next_idx]}（./specc.sh ${SPECC_STAGES[$next_idx]} $(basename "$fdir")）"
       else
-        log_ok "六阶段全部完成！可执行 ./specc.sh archive $(basename "$fdir") 归档（v0.2）"
+        log_ok "六阶段全部完成！需求【$(basename "$fdir")】已端到端实现完毕"
       fi
       ;;
     reject)
