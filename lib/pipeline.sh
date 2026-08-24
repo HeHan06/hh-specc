@@ -19,7 +19,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/gates.sh"
 stage_deliverables() {
   local stage="$1" fdir="$2"
   case "$stage" in
-    specify)  echo "- $fdir/spec.md（EARS 需求 + 端归属 + 验收标准 + 不做什么）" ;;
+    specify)  echo "- $fdir/spec.md（EARS 需求 + 端归属 + 验收标准 + 不做什么）"
+              echo "- $fdir/business.md $fdir/data-model.md $fdir/flows.md（业务层知识三件套，后续阶段注入）" ;;
     clarify)  echo "- $fdir/clarify.md（问答记录）"
               echo "- $fdir/spec.md（回填，[NEEDS CLARIFICATION] 清零）" ;;
     plan)     echo "- $fdir/plan.md（技术方案，遵循 plan 模板）"

@@ -45,9 +45,6 @@ cmd_init() {
     ".specc/platform/miniprogram-standards.md"
     ".specc/platform/web-admin-standards.md"
     ".specc/platform/api-conventions.md"
-    ".specc/project/business.md"
-    ".specc/project/data-model.md"
-    ".specc/project/flows.md"
     ".specc/config.yaml"
     ".specc/templates/spec.template.md"
     ".specc/templates/plan.template.md"
@@ -69,13 +66,8 @@ cmd_init() {
   (( missing == 0 )) || die "资产不完整，请从模板仓库恢复上述文件后重试"
 
   # 运行时目录（幂等创建；重复 init 不覆盖已修改的宪法——只建缺失目录）
-  mkdir -p "$FEATURES_DIR" "$SPECS_DIR" \
-           "$SPECC_ROOT/web-admin" "$SPECC_ROOT/miniprogram" \
-           "$SPECC_ROOT/backend" "$SPECC_ROOT/shared"
-  # 工程目录放 .gitkeep 保证空目录可被 git 跟踪
-  local d; for d in web-admin miniprogram backend shared; do
-    touch "$SPECC_ROOT/$d/.gitkeep"
-  done
+  # 需求代码目录 projects/ 由 implement 阶段按需创建，不在此处预建
+  mkdir -p "$FEATURES_DIR" "$SPECS_DIR" "$PROJECTS_DIR"
 
   log_ok "specc 初始化完成：资产齐备，工作目录就绪"
   log_info "下一步：./specc.sh new <需求ID> 创建你的第一个需求"

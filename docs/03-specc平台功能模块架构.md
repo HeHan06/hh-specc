@@ -37,10 +37,12 @@ specc 是一个**领域专属的规范驱动（Spec-Driven）AI Coding 平台**�
 │   ├── verify-report.md 验证报告（验收标准逐条对照）    │
 │   └── state.json       状态 + 人工审查历史（审计链）   │
 └──────────────────────────────────────────────────┘
-┌─ ② 代码产物（本体，写入目标工程工作区）────────────────┐
+┌─ ② 代码产物（本体，归档到 projects/<需求ID>/）──────────┐
+│   projects/<需求ID>/                                  │
 │   ├── web-admin/       React 18 + Vite + AntD      │
 │   ├── miniprogram/     Taro 小程序                  │
-│   └── backend/         Java 17 + SB3 + MyBatis + PgSQL│
+│   ├── backend/         Java 17 + SB3 + MyBatis + PgSQL│
+│   └── shared/          双端共享（类型/工具/常量）       │
 │   + 对应单元测试                                      │
 └──────────────────────────────────────────────────┘
 └─ ③ 审计线索：每任务/每变更可回链到 Req 编号 ──────────┘
@@ -57,22 +59,26 @@ specc 是一个**领域专属的规范驱动（Spec-Driven）AI Coding 平台**�
 
 ### 2.3 仓库结构（决策：Monorepo）
 
-specc 仓库本身即代码仓库，单仓库三工程：
+specc 仓库本身即代码仓库，单仓库多需求归档：
 
 ```
 specc/                            # = 本仓库
-├── .specc/                       # 框架资产（宪法/平台层/业务层/模板/提示词）
+├── .specc/                       # 框架资产（宪法/平台层/模板/提示词，纯跨需求通用）
 ├── specs/                        # 系统级规格库（归档累积）
-├── features/                     # 需求工作目录（规格产物包）
-├── web-admin/                    # ★ Web 后台工程（React 18 + Vite + AntD）
-├── miniprogram/                  # ★ 小程序工程（Taro）
-├── backend/                      # ★ 后端工程（Java 17 + SB3 + MyBatis + PgSQL）
-├── shared/                       # ★ 双端共享（类型定义/工具函数/常量，Taro 与 React 共用）
+├── features/                     # 需求工作目录（规格 + 业务层知识）
+├── projects/                     # ★ 需求代码归档区（每个需求一个子目录）
+│   └── <需求ID>/                 #   与 features/<需求ID>/ 靠需求ID对应
+│       ├── web-admin/            #   Web 后台工程（React 18 + Vite + AntD）
+│       ├── miniprogram/          #   小程序工程（Taro）
+│       ├── backend/              #   后端工程（Java 17 + SB3 + MyBatis + PgSQL）
+│       └── shared/               #   双端共享（类型/工具/常量，Taro 与 React 共用）
 ├── lib/                          # 编排层脚本（M2~M10 载体）
 └── specc.sh                      # CLI 入口
 ```
 
 **选 Monorepo 的理由**：规格与代码同库，需求回链天然一致；双端 + 共享层跨工程改动一次提交完成；单人/小团队维护成本最低。
+
+**隔离原则（v0.1 补强）**：平台组件（`.specc/`、`lib/`、`specc.sh`）与需求产物（`features/<ID>/`、`projects/<ID>/`）严格分离——新建需求只增删 `features/` 与 `projects/` 下的对应子目录，平台资产零改动；需求代码归档进 `projects/`，避免与框架内部内容混在一起。
 
 ---
 
@@ -94,7 +100,7 @@ specc/                            # = 本仓库
 │ M3 知识  │   │ M4 模板与   │   │ M5 上下文组装器  │   │ M8 状态与    │
 │ 资产库   │   │ 提示词系统  │   │ (Context        │   │ 检查点管理   │
 │ 宪法/平台 │   │ 4类产物模板  │   │  Assembler)     │   │ state.json  │
-│ /业务层  │   │ 6个阶段指令  │   │ 三层知识JIT拼装   │   │ 进度/重试    │
+│ 层(通用)  │   │ 6个阶段指令  │   │ 三层知识JIT拼装   │   │ 进度/重试    │
 └───┬─────┘   └─────┬──────┘   └────────┬────────┘   └─────────────┘
     │               │                   │
     └───────────────┴─────────►  阶段提示词（组装完成）
@@ -128,7 +134,7 @@ specc/                            # = 本仓库
 
 | 命令 | 功能 |
 |---|---|
-| `specc init` | 初始化 `.specc/` 资产（宪法/平台层/模板），业务层占位待填 |
+| `specc init` | 初始化 `.specc/` 资产（宪法/平台层/模板）；业务层知识不再预置，由 specify 阶段按需生成 |
 | `specc new <需求ID>` | 创建需求工作目录 `features/<需求ID>/`，初始化 state.json |
 | `specc <stage>` | 执行指定阶段（specify/clarify/plan/tasks/implement/verify） |
 | `specc status` | 展示当前需求的阶段进度、门禁状态、未完成任务 |
@@ -159,11 +165,12 @@ specc/                            # = 本仓库
 |---|---|---|
 | 宪法 `constitution.md` | 技术栈锁定（Java17/SB3/MyBatis/React18/Vite/AntD/Taro/PgSQL）、安全红线、测试标准、流程纪律、小程序合规 | 变更需人工审批，版本化 |
 | 平台层 `platform/`（5 文件） | tech-stack / dual-end-boundary / miniprogram-standards / web-admin-standards / api-conventions | 双端品类通用，跨项目复用 |
-| 业务层 `project/`（3 文件） | business（术语+角色）/ data-model / flows | 每业务项目初始化一份 |
+| 业务层知识（3 文件） | business（术语+角色）/ data-model / flows | **由 specify 阶段从需求描述自动生成**，归档在 `features/<需求ID>/` 下，随需求走，不进 `.specc/` |
 
 **设计要点**：
 - 全部为 Markdown，人与 AI 同读
 - 平台层与业务层分离 → 同一框架服务多个业务项目
+- **业务层知识是 specify 的产出物而非全局资产**：一个需求一份，新建需求时随 specify 重新生成，无需替换平台资产
 - Taro 决策带来的新增规约点：**双端共享策略**（共享组件库/工具函数/类型定义的目录约定）写入 dual-end-boundary.md
 
 ### M4 模板与提示词系统
@@ -182,7 +189,7 @@ specc/                            # = 本仓库
 **职责**：按阶段公式拼装最终提示词，实现 JIT（按需）注入，控制上下文体积。
 
 ```
-阶段提示词 = 宪法 + 平台层相关片段 + 业务层相关片段 + 上一阶段产物(片段) + 模板 + 阶段指令
+阶段提示词 = 宪法 + 平台层相关片段 + 业务层知识片段（来自 features/<需求ID>/）+ 上一阶段产物(片段) + 模板 + 阶段指令
 ```
 
 | 能力 | 说明 |
@@ -264,9 +271,9 @@ features/<需求ID>/state.json
 用户: specc new order-mgmt && specc specify "顾客可在小程序下单…"
   │
   M1 CLI ──► M2 流程引擎（新建 state.json，进入 specify）
-  M2 ──► M5 组装器: 宪法 + 业务层 + spec模板 + specify指令
+  M2 ──► M5 组装器: 宪法 + 平台层 + spec模板 + specify指令
   M5 ──► M6 CodexAdapter: codex exec（有界调用）
-  M6 ──► 产物落盘 spec.md
+  M6 ──► 产物落盘 spec.md + business.md + data-model.md + flows.md（业务层知识三件套）
   M2 ──► M7 门禁: 结构检查 ✓ → 人工检查点 ✋（用户审规格）
   用户 approve ──► M8 记录 state: specify=approved
   …（clarify / plan / tasks 同理）…
@@ -286,7 +293,7 @@ features/<需求ID>/state.json
 |---|---|
 | M1 CLI | `specc.sh`（v0.1 用 shell 实现，保持零依赖） |
 | M2 流程引擎 | `specc.sh` 内的阶段函数 + `lib/pipeline.sh` |
-| M3 知识资产库 | `.specc/constitution.md`、`.specc/platform/`、`.specc/project/` |
+| M3 知识资产库 | `.specc/constitution.md`、`.specc/platform/`（业务层知识在 `features/<需求ID>/`） |
 | M4 模板与提示词 | `.specc/templates/`、`.specc/prompts/` |
 | M5 上下文组装器 | `lib/assemble.sh`（阶段→知识片段映射表） |
 | M6 引擎适配层 | `lib/engines/codex.sh`、`lib/engines/manual.sh` |
@@ -294,7 +301,7 @@ features/<需求ID>/state.json
 | M8 状态管理 | `features/<ID>/state.json` + `lib/state.sh` |
 | M9 配置管理 | `.specc/config.yaml` + 环境变量 |
 | M10 归档与规格库 | `specs/` + `lib/archive.sh` |
-| 代码工作区 | `web-admin/`、`miniprogram/`、`backend/`、`shared/`（Monorepo，工作区直写，不自动 commit） |
+| 代码工作区 | `projects/<需求ID>/` 下的 `web-admin/`、`miniprogram/`、`backend/`、`shared/`（工作区直写，不自动 commit） |
 
 > v0.1 选型说明：编排层用 shell 脚本（无构建、无依赖、可直接跑），核心复杂度在规格资产而非代码；若后续门禁逻辑复杂化，可迁移到 Node/Python 而不影响规格层。
 
@@ -306,7 +313,7 @@ features/<需求ID>/state.json
 |---|---|---|
 | M1 CLI | 全部命令 | 补 light/change profile 命令 |
 | M2 流程引擎 | full profile 六阶段 | light（小改动）/ change（增量变更）裁剪 |
-| M3 知识资产库 | 宪法 + 平台层 5 文件 + 业务层模板 | 知识资产版本化与冲突检测 |
+| M3 知识资产库 | 宪法 + 平台层 5 文件；业务层知识由 specify 生成于 features/ | 知识资产版本化与冲突检测 |
 | M4 模板提示词 | 4 模板 + 6 指令 | 按演练反馈迭代 |
 | M5 组装器 | 阶段映射 + 片段注入 | Token 预算自动裁剪 |
 | M6 引擎适配 | Codex + Manual 双适配 | 更多引擎（Claude Code 等） |
@@ -323,7 +330,7 @@ features/<需求ID>/state.json
 |---|---|
 | 输出形态：规格产物包 + 代码 + 审计线索三类交付物 | 规格可审计、代码可运行、变更可回链 |
 | Git 形态 A（工作区直写，不自动 commit） | 人是质量守门人，进版本库的动作保留给人 |
-| Monorepo 单仓库三工程 + shared/ 共享层 | 规格与代码同库回链一致；Taro/React 共享代码有明确归属 |
+| Monorepo 单仓库 + projects/<需求ID>/ 需求代码归档 + shared/ 共享层 | 规格与代码同库回链一致；Taro/React 共享代码有明确归属；平台组件与需求产物隔离 |
 | 规格层纯 Markdown、与引擎解耦 | 引擎可从 Qwen 换到任何模型，资产不废弃 |
 | 编排层 v0.1 用 shell | 零依赖、透明可审；复杂度在资产不在代码 |
 | 一阶段一次有界调用、任务原子化 | 对抗中等模型长程漂移的最有效手段 |

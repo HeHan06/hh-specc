@@ -64,10 +64,10 @@ assemble_context() {
     _append_file "$SPECC_DIR/platform/$pf" "平台层知识"
   done
 
-  # 3) 业务层：全量注入
+  # 3) 业务层：全量注入（业务层知识由 specify 阶段生成于本需求目录）
   local bf
   for bf in business.md data-model.md flows.md; do
-    _append_file "$SPECC_DIR/project/$bf" "业务层知识"
+    _append_file "$fdir/$bf" "业务层知识"
   done
 
   # 4) 上一阶段产物 + 额外指定文件（如 implement 的任务片段、plan 的契约）
@@ -138,7 +138,7 @@ assemble_implement_task() {
     done
     local bf
     for bf in business.md data-model.md flows.md; do
-      _append_file "$SPECC_DIR/project/$bf" "业务层知识"
+      _append_file "$fdir/$bf" "业务层知识"
     done
     _append_file "$fdir/plan.md" "阶段输入产物"
     if [[ -d "$fdir/contracts" ]]; then
