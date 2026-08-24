@@ -4,12 +4,46 @@
 # 职责：两类自动门禁（结构检查）+ 人工检查点的统一执行框架。
 #   自动门禁先行，失败即终止并报告；通过后暂停等待人工审查（✋）。
 # 门禁清单（对应 05-验收用例 TC-G2~G5）：
+#   - specify 后：spec.md 完整 + 业务层知识三件套齐备
 #   - clarify 后：spec.md 不得残留 [NEEDS CLARIFICATION]
 #   - tasks 后：每条 Req 至少被一个任务回链覆盖
 #   - plan 后：契约四要素齐备（响应体/错误码/认证/分页）
 # ============================================================
 
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+
+# ---- 自动门禁：specify 阶段 —— 产物完整性 ----
+# 规则：spec.md 结构完整 + 业务层知识三件套（business/data-model/flows）齐备且非空。
+# 背景：业务层知识是 specify 的产出物（非全局资产），后续阶段注入；若引擎漏生成，
+#   assemble.sh 会对不存在文件静默跳过，导致「业务层知识缺失但不报错」，故此处强制校验。
+gate_check_specify() {
+  local fdir="$1"
+  local spec="$fdir/spec.md"
+  local fail=0
+
+  [[ -f "$spec" ]] || { log_error "门禁失败：缺少产物 $spec"; return 1; }
+
+  # 业务层知识三件套必须存在且非空
+  local f
+  for f in business.md data-model.md flows.md; do
+    if [[ ! -s "$fdir/$f" ]]; then
+      log_error "门禁失败：缺少业务层知识产物 ${fdir}/${f}（specify 阶段必须生成三件套）"
+      fail=1
+    fi
+  done
+
+  # spec.md 基本结构：至少一条 Req-N
+  grep -qE 'Req-[0-9]+' "$spec" || {
+    log_error "门禁失败：spec.md 未找到任何 Req-N 需求条目"; fail=1; }
+
+  # 范围边界与量化约束章节必须存在（一等公民）
+  grep -q '不做什么' "$spec" || { log_error "门禁失败：spec.md 缺少「不做什么（范围边界）」章节"; fail=1; }
+  grep -q '量化约束' "$spec" || { log_error "门禁失败：spec.md 缺少「量化约束」章节"; fail=1; }
+
+  [[ "$fail" -eq 1 ]] && return 1
+  log_ok "结构检查：spec.md 完整 + 业务层知识三件套齐备"
+  return 0
+}
 
 # ---- 自动门禁：clarify 阶段 —— 待澄清标记必须清零 ----
 gate_check_clarify() {
@@ -88,6 +122,7 @@ gate_check_plan() {
 gate_auto_run() {
   local stage="$1" fdir="$2"
   case "$stage" in
+    specify) gate_check_specify "$fdir" ;;
     clarify) gate_check_clarify "$fdir" ;;
     plan)    gate_check_plan "$fdir" ;;
     tasks)   gate_check_tasks "$fdir" ;;
