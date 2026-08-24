@@ -16,6 +16,18 @@ engine_type() {
   cfg_get 'engine.type' 'codex'
 }
 
+# ---- 计算引擎工作目录 ----
+# implement 阶段代码产物写入 projects/<需求ID>（与平台组件隔离，见 docs/03），
+# 其余阶段产物落在 features/<需求ID>（规格产物）。
+_engine_workdir() {
+  local stage="$1" fdir="$2"
+  if [[ "$stage" == "implement" ]]; then
+    echo "$PROJECTS_DIR/$(basename "$fdir")"
+  else
+    echo "$fdir"
+  fi
+}
+
 # ---- codex 引擎可用性检查 ----
 # 检查项：codex 命令存在 + 密钥环境变量已设置
 # 任一不满足即不可用（调用方可选择退化到 manual）
@@ -82,6 +94,11 @@ engine_run_codex() {
   log_info "引擎：Codex Harness ｜ 模型：${model_id} ｜ 端点：${base_url}"
   log_info "阶段：${stage} ｜ 需求：$(basename "$fdir")"
 
+  # 计算工作目录：implement 写代码到 projects/<ID>，其余阶段写产物到 features/<ID>
+  local workdir
+  workdir="$(_engine_workdir "$stage" "$fdir")"
+  mkdir -p "$workdir"
+
   # 组装最终执行指令：提示词内容 + 产物要求
   local exec_prompt
   exec_prompt="$(cat "$prompt_file")
@@ -89,7 +106,7 @@ engine_run_codex() {
 ---
 【产物要求】
 ${deliverables}
-【工作目录】${fdir}"
+【工作目录】${workdir}"
 
   # Codex 状态目录重定向：默认 ~/.codex 在 IDE 沙箱内可能不可写（实测暴露），
   # 重定向到项目内 .specc-cache/codex-home（已被 .gitignore 覆盖，不入库）。
@@ -102,7 +119,7 @@ ${deliverables}
   # codex exec：非交互模式、跳过 git 仓库检查（本仓库可能刚初始化）
   # --full-auto：在沙箱内自动执行工具调用；高风险操作仍受审批策略约束
   # </dev/null：切断 stdin，避免外层循环的 here-string/管道内容泄漏给 codex
-  ( cd "$SPECC_ROOT" && codex exec --skip-git-repo-check "$exec_prompt" </dev/null )
+  ( cd "$workdir" && codex exec --skip-git-repo-check "$exec_prompt" </dev/null )
 }
 
 # ---- manual 退化适配器：输出提示词与产物清单，转人工执行 ----
@@ -113,6 +130,9 @@ engine_run_manual() {
   local out_dir
   out_dir="$(cfg_get 'engine.output_dir' '.specc-cache/prompts')"
   mkdir -p "$SPECC_ROOT/$out_dir"
+  local workdir
+  workdir="$(_engine_workdir "$stage" "$fdir")"
+  mkdir -p "$workdir"
   local saved="$SPECC_ROOT/$out_dir/$(basename "$fdir")-${stage}.prompt.md"
   # 源与目标可能同名（pipeline 组装与 manual 输出同路径），判等则跳过拷贝
   if [[ "$(cd "$(dirname "$prompt_file")" && pwd)/$(basename "$prompt_file")" != "$(cd "$(dirname "$saved")" && pwd)/$(basename "$saved")" ]]; then
@@ -126,7 +146,7 @@ engine_run_manual() {
   echo "     提示词文件：$saved"
   echo "  2. 要求 Agent 产出以下产物："
   echo "$deliverables" | sed 's/^/       /'
-  echo "  3. 产物落盘路径：$fdir"
+  echo "  3. 产物落盘路径：$workdir"
   echo "  4. 完成后重新执行本阶段命令以过门禁"
   echo "============================================================"
   echo ""

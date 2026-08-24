@@ -26,7 +26,7 @@ stage_deliverables() {
     plan)     echo "- $fdir/plan.md（技术方案，遵循 plan 模板）"
               echo "- $fdir/contracts/<模块>.yaml（契约，四要素齐备）" ;;
     tasks)    echo "- $fdir/tasks.md（原子任务 + 需求回链 + 验证命令）" ;;
-    implement) echo "- 代码写入工作区：web-admin/ miniprogram/ backend/ shared/（含单测）"
+    implement) echo "- 代码写入 $PROJECTS_DIR/$(basename "$fdir")/：web-admin/ miniprogram/ backend/ shared/（含单测）"
               echo "- 不自动 commit（宪法 5.5 / Git 形态 A）" ;;
     verify)   echo "- $fdir/verify-report.md（测试汇总 + 契约一致性 + 验收对照表）" ;;
   esac

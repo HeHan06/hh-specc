@@ -17,7 +17,7 @@
 ## 输出
 
 - 任务涉及文件中的源代码 + 单元测试（测试先行任务先写测试）
-- 写入对应工程目录：`web-admin/` / `miniprogram/` / `backend/` / `shared/`
+- 写入对应工程目录（相对工作目录 `projects/{需求ID}/`）：`web-admin/` / `miniprogram/` / `backend/` / `shared/`
 
 ## 工作步骤
 

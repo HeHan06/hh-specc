@@ -8,13 +8,16 @@
 
 ```
 项目根/
-├── web-admin/        # Web 管理后台（React 18 + Vite + Ant Design）
-├── miniprogram/      # 微信小程序（Taro）
-├── backend/          # 后端（Java 17 + Spring Boot 3 + MyBatis）
-├── shared/           # 双端共享层（见 platform/dual-end-boundary.md）
-├── .specc/           # specc 框架资产
-├── specs/            # 系统级规格库（归档）
-└── features/         # 需求工作目录
+├── .specc/           # specc 框架资产（平台层知识 + 模板 + 指令 + 配置）
+├── lib/ specc.sh     # specc 平台组件（CLI + 流程引擎 + 门禁）
+├── features/         # 需求工作目录（规格产物：spec/plan/tasks/contracts）
+├── projects/         # 需求代码归档目录（每需求一个子目录，与平台组件隔离）
+│   └── <需求ID>/
+│       ├── web-admin/    # Web 管理后台（React 18 + Vite + Ant Design）
+│       ├── miniprogram/  # 微信小程序（Taro）
+│       ├── backend/      # 后端（Java 17 + Spring Boot 3 + MyBatis）
+│       └── shared/       # 双端共享层（见 platform/dual-end-boundary.md）
+└── docs/             # 项目文档
 ```
 
 ## 2. Web 后台（web-admin/）

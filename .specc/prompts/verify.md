@@ -7,7 +7,7 @@
 ## 输入
 
 1. `features/{需求ID}/` 全部产物（spec/plan/tasks/contracts）
-2. 已生成的代码（`web-admin/`、`miniprogram/`、`backend/`、`shared/`）
+2. 已生成的代码（`projects/{需求ID}/` 下的 `web-admin/`、`miniprogram/`、`backend/`、`shared/`）
 3. 宪法 + 契约规范
 
 ## 输出
