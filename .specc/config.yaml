@@ -5,6 +5,13 @@
 #   - API 密钥一律走环境变量（如 DASHSCOPE_API_KEY），禁止写入本文件
 # ============================================================
 
+# ---- 应用元信息 ----
+app:
+  # 框架名称
+  name: hh-specc
+  # 框架发布版本（★ 单一真相源：与 git tag 保持一致，specc.sh --version 读取此处）
+  version: 0.0.0
+
 # ---- 引擎配置 ----
 engine:
   # 引擎类型：codex（调用 Codex Harness）| manual（产物模式：输出提示词由人工在任意 IDE 执行）

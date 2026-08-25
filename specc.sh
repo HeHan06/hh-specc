@@ -28,9 +28,18 @@ specc —— 规范驱动 AI Coding 平台 CLI
   ./specc.sh <stage> <需求ID>        执行阶段（六阶段）
   ./specc.sh redo <stage> <需求ID>   重置某阶段及其后的门禁
   ./specc.sh help                   显示本帮助
+  ./specc.sh --version              显示版本号
 
 六阶段：specify → clarify → plan → tasks → implement → verify
 EOF
+}
+
+# ---- version：显示框架名称与版本号（单一真相源：.specc/config.yaml 的 app.version）----
+cmd_version() {
+  local name ver
+  name="$(cfg_get 'app.name' 'hh-specc')"
+  ver="$(cfg_get 'app.version' '0.0.0')"
+  echo "${name} v${ver}"
 }
 
 # ---- init：校验资产完整性（骨架由模板仓库携带，此处做完整性检查与兜底）----
@@ -183,6 +192,7 @@ main() {
       pipeline_run_stage "$stage" "$fdir"
       ;;
     help|-h|--help) usage ;;
+    --version|-v|version) cmd_version ;;
     *) log_error "未知命令：$cmd"; echo ""; usage; exit 1 ;;
   esac
 }
