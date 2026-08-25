@@ -17,6 +17,11 @@ async function fetchRequest({ path, method }) {
   return response.json();
 }
 
+/**
+ * @capability Req-1 当日语录展示
+ * @capabilityPoint T-11 渲染今日语录卡片
+ * @orchestrate from=T-11 to=T-09 rel=calls
+ */
 function QuotePage() {
   const [quote, setQuote] = useState(null);
   const [loading, setLoading] = useState(true);

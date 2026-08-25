@@ -7,6 +7,11 @@ import { wxRequestAdapter } from '../../platform/request.js';
 import './index.scss';
 
 // 当日语录展示页：读者匿名阅读，只读、无账号入口。
+/**
+ * @capability Req-1 当日语录展示
+ * @capabilityPoint T-13 渲染小程序语录卡片
+ * @orchestrate from=T-13 to=T-09 rel=calls
+ */
 function QuotePage() {
   const [quote, setQuote] = useState(null);
   const [loading, setLoading] = useState(true);

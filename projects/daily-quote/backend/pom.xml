@@ -44,6 +44,16 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!--
+          可观测性注解（scope=provided）：仅编译期可见，运行时不打进 jar。
+          三个注解为 SOURCE 保留策略，编译后零痕，业务运行时零开销。
+        -->
+        <dependency>
+            <groupId>com.hhspecc.observability</groupId>
+            <artifactId>specc-observability</artifactId>
+            <version>0.0.0</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -62,6 +72,24 @@
             </resource>
         </resources>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <!-- 编译期挂载可观测性 APT，扫描注解生成 code-graph.json/.mmd -->
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>com.hhspecc.observability</groupId>
+                            <artifactId>specc-observability</artifactId>
+                            <version>0.0.0</version>
+                        </path>
+                    </annotationProcessorPaths>
+                    <compilerArgs>
+                        <arg>-AcodeGraphFeature=daily-quote</arg>
+                        <arg>-AcodeGraphOutputDir=${project.basedir}/target/observability</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

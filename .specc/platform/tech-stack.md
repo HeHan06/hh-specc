@@ -50,3 +50,28 @@
 - 前后端跨域、鉴权令牌传递方式由契约统一约定，禁止各端私定
 - 所有工程必须能通过各自的标准构建命令（plan 阶段写明验证命令）
 - 依赖版本在 plan 阶段锁定，implement 阶段不得随意升级
+
+## 6. 可观测性注解（code-graph 标签规范）
+
+> 目的：让 AI 生成的代码携带「语义标签」，编译期自动生成 DAG 图（code-graph.json/.mmd），
+> 供 verify 阶段与人工 review 快速理解「这段代码属于哪个能力、实现哪个任务、调用关系如何」。
+> 关键：注解保留策略为 SOURCE，仅编译期被 APT 扫描，运行时不进字节码，业务性能零影响。
+
+### 6.1 后端（Java）三个注解
+
+| 注解 | 贴在哪 | 语义 | 对齐资产 |
+|---|---|---|---|
+| `@Capability` | 类/接口 | 能力（功能面） | `spec.md` 的 `Req-N` |
+| `@CapabilityPoint` | 方法 | 能力点（原子任务） | `tasks.md` 的 `T-XX` |
+| `@Orchestrate` | 方法 | 编排边（调用关系） | `flows.md` / 契约 |
+
+- **编号必须真实对齐 spec/tasks，禁止臆造**（否则 DAG 撒谎，失去可观测价值）。
+- `@Orchestrate.from/to` 用任务编号（T-XX）显式声明上游→下游，`rel` 默认 `calls`。
+- 依赖用 `scope=provided`，构建挂 APT 处理器（`annotationProcessorPaths`），产物写 `target/observability/`。
+- 注解模块：`specc-observability`（平台级 SDK，跨需求复用，不随业务代码入库）。
+
+### 6.2 前端（web-admin / miniprogram）标注
+
+- 语义对齐：能力=`Req-N`、能力点=`T-XX`、编排边=调用关系。
+- 当前以 JSDoc 标签标注语义（`@capability` / `@capabilityPoint` / `@orchestrate`），
+  构建期 AST 扫描生成 DAG 列为后续演进（MVP 先落地后端 APT，前端标注先铺语义、不阻断构建）。

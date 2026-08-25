@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.hhspecc.observability</groupId>
+    <artifactId>specc-observability</artifactId>
+    <version>0.0.0</version>
+    <packaging>jar</packaging>
+    <name>specc-observability</name>
+    <description>
+        hh-specc 可观测性注解与编译期 DAG 处理器。
+        三个注解（Capability/CapabilityPoint/Orchestrate）用 SOURCE 保留策略，
+        只在编译期被 APT 扫描生成 code-graph.json，运行时零开销、零依赖。
+    </description>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <!-- 本模块编译时不跑自己的处理器，避免循环处理 -->
+                    <proc>none</proc>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

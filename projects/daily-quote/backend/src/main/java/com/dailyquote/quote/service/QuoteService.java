@@ -3,6 +3,8 @@ package com.dailyquote.quote.service;
 import com.dailyquote.quote.dto.QuoteView;
 import com.dailyquote.quote.mapper.QuoteMapper;
 import com.dailyquote.quote.mapper.SystemConfigMapper;
+import com.hhspecc.observability.Capability;
+import com.hhspecc.observability.CapabilityPoint;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -15,6 +17,7 @@ import java.util.regex.Pattern;
  * 展示日期统一在服务端按 Asia/Shanghai 计算，客户端不传日期；
  * 当日无已上架语录时，从 system_config 读取预置兜底内容组装视图。
  */
+@Capability(req = "Req-1", name = "当日语录展示")
 @Service
 public class QuoteService {
 
@@ -34,6 +37,7 @@ public class QuoteService {
         this.systemConfigMapper = systemConfigMapper;
     }
 
+    @CapabilityPoint(task = "T-07", name = "查询今日语录")
     public QuoteView getTodayQuote() {
         LocalDate today = LocalDate.now(SHANGHAI_ZONE);
         QuoteView published = quoteMapper.selectPublishedByDisplayDate(today);
