@@ -14,6 +14,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/state.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/assemble.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/engines.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/gates.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/observability.sh"
 
 # ---- 各阶段产物说明（供引擎/人工执行时明确交付物）----
 stage_deliverables() {
@@ -118,6 +119,16 @@ pipeline_run_stage() {
     state_history_add "$fdir" "阶段 $stage 引擎执行失败"
     return 1
   }
+
+  # 3.5) verify 阶段：生成跨端可观测 DAG（确定性产物，不依赖引擎）
+  # 后端 DAG 已由引擎跑测试时的编译期 APT 顺带生成；此处补前端扫描 + 跨端合并
+  if [[ "$stage" == "verify" ]]; then
+    observability_generate "$fdir" || {
+      state_set "$fdir" "gates.$stage" "gate_failed"
+      state_history_add "$fdir" "阶段 $stage 可观测 DAG 生成失败"
+      return 1
+    }
+  fi
 
   # 4) 自动门禁（✓ 先行）
   if ! gate_auto_run "$stage" "$fdir"; then

@@ -118,6 +118,27 @@ gate_check_plan() {
   return 0
 }
 
+# ---- 自动门禁：verify 阶段 —— 验证报告四部分齐备 ----
+# 规则：verify-report.md 必须存在且含四部分：测试汇总/契约一致性/宪法抽查/验收对照表。
+# 可观测 DAG 由 pipeline 在 verify 阶段先行生成（observability_generate），
+# 生成失败已在流程中阻断，此处不再重复校验 DAG 产物。
+gate_check_verify() {
+  local fdir="$1"
+  local report="$fdir/verify-report.md"
+  local fail=0
+
+  [[ -s "$report" ]] || { log_error "门禁失败：缺少产物 $report（verify 阶段必须生成验证报告）"; return 1; }
+
+  grep -q '测试汇总' "$report"     || { log_error "门禁失败：报告缺少「测试汇总」部分"; fail=1; }
+  grep -q '契约一致性' "$report"   || { log_error "门禁失败：报告缺少「契约一致性」部分"; fail=1; }
+  grep -q '宪法抽查' "$report"     || { log_error "门禁失败：报告缺少「宪法抽查」部分"; fail=1; }
+  grep -qE '验收(标准)?对照表' "$report" || { log_error "门禁失败：报告缺少「验收对照表」部分"; fail=1; }
+
+  [[ "$fail" -eq 1 ]] && return 1
+  log_ok "结构检查：验证报告四部分齐备（测试汇总/契约一致性/宪法抽查/验收对照表）"
+  return 0
+}
+
 # ---- 自动门禁路由：按阶段执行对应检查（无自动门禁的阶段直接通过）----
 gate_auto_run() {
   local stage="$1" fdir="$2"
@@ -126,6 +147,7 @@ gate_auto_run() {
     clarify) gate_check_clarify "$fdir" ;;
     plan)    gate_check_plan "$fdir" ;;
     tasks)   gate_check_tasks "$fdir" ;;
+    verify)  gate_check_verify "$fdir" ;;
     *)       log_info "阶段 $stage 无自动门禁，跳过"; return 0 ;;
   esac
 }

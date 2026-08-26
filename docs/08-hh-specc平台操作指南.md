@@ -54,6 +54,7 @@ hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言�
 | `./specc.sh status [需求ID]` | 查看阶段进度、门禁状态、任务进度、审计历史 |
 | `./specc.sh <stage> <需求ID>` | 执行六阶段之一 |
 | `./specc.sh redo <stage> <需求ID>` | 重置某阶段及之后的门禁（保留之前阶段） |
+| `./specc.sh strip <需求ID> [--apply]` | 剥离可观测性注解/标签（交付前清理，默认仅预览） |
 | `./specc.sh approve <需求ID> [意见]` | 异步审批：通过待审阶段 |
 | `./specc.sh reject <需求ID> <意见>` | 异步审批：否决待审阶段 |
 | `./specc.sh help` | 帮助（`-h` / `--help` 等价） |
@@ -74,7 +75,7 @@ hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言�
 | plan | `plan.md` + `contracts/*.yaml` | ✅ 契约四要素齐备 | ✅ 需人工审 |
 | tasks | `tasks.md` | ✅ 每条 Req 被任务回链覆盖 | 自动通过 |
 | implement | 代码写入 `projects/<需求ID>/` | 逐任务验证命令 | 自动通过 |
-| verify | `verify-report.md` | 无自动门禁（只读+报告） | ✅ 需人工终审 |
+| verify | `verify-report.md` + 跨端可观测 DAG | ✅ 验证报告四部分 + DAG 自动生成 | ✅ 需人工终审 |
 
 ### 3.1 自动门禁（✓ 先行）
 
@@ -84,6 +85,7 @@ hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言�
 - **clarify**：`spec.md` 仍残留 `[NEEDS CLARIFICATION]` → 列出未消除的行
 - **plan**：契约缺四要素（`error-code-table` / `auth:` / `pageNum` / 统一响应体）→ 逐个文件报缺哪项
 - **tasks**：spec 中某条 `Req-N` 未被任何任务的回链行覆盖 → 报出缺失的需求编号
+- **verify**：`verify-report.md` 缺四部分（测试汇总/契约一致性/宪法抽查/验收对照表）→ 逐项报缺；跨端可观测 DAG 生成失败 → 报扫描/合并错误
 
 ### 3.2 人工检查点（✋ 后置）
 
@@ -273,7 +275,13 @@ hh-specc/
 ./specc.sh verify daily-quote
 ```
 
-生成 `verify-report.md`（测试汇总 + 契约一致性 + 验收标准逐条对照表）。人工对照验收标准终审后：
+生成 `verify-report.md`（测试汇总 + 契约一致性 + 验收标准逐条对照表），并自动生成跨端可观测 DAG：
+
+- 后端 DAG：`projects/daily-quote/backend/target/observability/`（编译期 APT 自动生成）
+- 前端 DAG：`projects/daily-quote/target/observability-frontend/`（前端扫描器生成）
+- 跨端总图：`projects/daily-quote/target/observability/`（前后端按节点 id 合并，展示完整调用链）
+
+人工对照验收标准终审后：
 
 ```bash
 ./specc.sh approve daily-quote
@@ -283,6 +291,18 @@ hh-specc/
 ---
 
 ## 8. 常见操作与注意事项
+
+**交付前剥离可观测性注解/标签（strip）**
+
+```bash
+./specc.sh strip daily-quote             # 默认仅预览，展示将删除的 diff，不写文件
+./specc.sh strip daily-quote --apply     # 真正剥离（自动备份到 .specc-cache/strip-backup/）
+```
+
+- 清理对象：后端 `@Capability` / `@CapabilityPoint` / `@Orchestrate` 注解 + 对应 import；前端 JSDoc 的 `@capability` / `@capabilityPoint` / `@orchestrate` 标签块
+- 安全性：只删可观测性标签，业务逻辑零改动；注解为 SOURCE 保留策略，删除后编译/运行零影响
+- 幂等：可反复执行，第二次起提示「未发现可观测性注解/标签」
+- 还原：`--apply` 前自动整目录备份，从 `.specc-cache/strip-backup/<需求ID>-<时间戳>/` 恢复
 
 **重跑某阶段（修改产物后）**
 

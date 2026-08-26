@@ -181,7 +181,14 @@ function main() {
       console.warn(`[跳过] 非前端工程（无 package.json）：${abs}`);
       continue;
     }
-    const babel = resolveBabel(abs);
+    // 依赖可能未安装（如 shared 纯逻辑层无 @babel/parser），跳过而非中断整个扫描
+    let babel;
+    try {
+      babel = resolveBabel(abs);
+    } catch (e) {
+      console.warn(`[跳过] 缺少 @babel/parser/@babel/traverse 依赖：${abs}`);
+      continue;
+    }
     scanProject(abs, babel, collector);
   }
 

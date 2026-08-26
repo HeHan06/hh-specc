@@ -73,5 +73,7 @@
 ### 6.2 前端（web-admin / miniprogram）标注
 
 - 语义对齐：能力=`Req-N`、能力点=`T-XX`、编排边=调用关系。
-- 当前以 JSDoc 标签标注语义（`@capability` / `@capabilityPoint` / `@orchestrate`），
-  构建期 AST 扫描生成 DAG 列为后续演进（MVP 先落地后端 APT，前端标注先铺语义、不阻断构建）。
+- 以 JSDoc 标签标注语义（`@capability` / `@capabilityPoint` / `@orchestrate`）。
+- 前端扫描器 `specc-observability/frontend/scan.cjs` 用 Babel AST 解析 JSDoc 标签，
+  产出与后端同构的 DAG；跨端合并器 `merge.cjs` 按节点 id 合并前后端为完整调用链。
+- 扫描与合并已接入 verify 阶段自动执行（见 `lib/observability.sh`），无需手动敲命令。

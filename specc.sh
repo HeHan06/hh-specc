@@ -15,6 +15,7 @@ set -euo pipefail
 source "$(dirname "$0")/lib/common.sh"
 source "$(dirname "$0")/lib/state.sh"
 source "$(dirname "$0")/lib/pipeline.sh"
+source "$(dirname "$0")/lib/strip.sh"
 
 # ---- 用法帮助（验收用例 TC-A4：未知命令输出帮助并非 0 退出）----
 usage() {
@@ -27,6 +28,7 @@ specc —— 规范驱动 AI Coding 平台 CLI
   ./specc.sh status [需求ID]         查看进度与门禁状态
   ./specc.sh <stage> <需求ID>        执行阶段（六阶段）
   ./specc.sh redo <stage> <需求ID>   重置某阶段及其后的门禁
+  ./specc.sh strip <需求ID> [--apply] 剥离可观测性注解/标签（交付前清理，默认预览）
   ./specc.sh help                   显示本帮助
   ./specc.sh --version              显示版本号
 
@@ -174,6 +176,10 @@ main() {
       require_init
       local fdir; fdir="$(require_feature "$fid")"
       pipeline_redo "$stage" "$fdir"
+      ;;
+    strip)
+      shift
+      cmd_strip "$@"
       ;;
     approve|reject)
       # 异步审批命令：人工审查产物后通过/否决（配合人工检查点异步模式）
