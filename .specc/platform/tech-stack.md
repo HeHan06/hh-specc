@@ -27,15 +27,20 @@
 - 目录约定：
   - `src/pages/` 页面（按业务模块分目录）
   - `src/components/` 通用组件
+  - `src/services/` 数据流转（页面访问数据的唯一入口）
   - `src/api/` 接口封装（必须复用 `shared/` 的 API 客户端基座）
   - `src/utils/`、`src/constants/` 优先从 `shared/` 引入，不重复造
 
 ## 3. 小程序（miniprogram/）
 
 - 框架：Taro（React 语法），编译目标为微信小程序
-- 目录约定：`src/pages/`（页面）、`src/components/`、`src/services/`（接口，复用 `shared/`）
+- 目录约定：`src/pages/`（页面）、`src/components/`、`src/services/`（数据流转，复用 `shared/`）
 - 平台差异：微信特有 API（wx.*）统一封装在 `src/platform/`，禁止页面内裸调
 - 遵循 `platform/miniprogram-standards.md` 的合规与体积约束
+
+## 3.1 跨端前端架构统一（防漂移）
+
+跨端分层、防漂移硬规则、三态与竞态样板、抽象触发闸门等细则统一见 `platform/frontend-architecture.md`（F-01 ~ F-06），本章不重复其内容，只维护各端目录清单与端权责。若两者冲突，以 `frontend-architecture.md` 为准。
 
 ## 4. 后端（backend/）
 
