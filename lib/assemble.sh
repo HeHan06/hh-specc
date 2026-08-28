@@ -11,6 +11,7 @@
 # ============================================================
 
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/knowledge.sh"
 
 # ---- 阶段 → 平台层文件 映射表（JIT 注入的核心）----
 # specify 刻意不注入技术规约；plan 阶段全量注入
@@ -89,6 +90,23 @@ assemble_context() {
       echo ""
       echo "========== ⚠ 警告：未找到需求描述（$req_file）=========="
       echo "specify 阶段缺少需求输入，产物可能为空或不完整。请先补充需求描述。"
+    fi
+
+    # 6.5) 知识库：只注入「索引 + 已选文件」，避免全量灌入稀释重点（corpus 选读）
+    #      无 selection.md（第一次）时仅给索引，由模型先出候选清单，人工确认后重跑再读取
+    if [[ "$(cfg_get 'knowledge.enabled' 'true' 2>/dev/null)" == "true" && -d "$fdir/knowledge" ]]; then
+      if knowledge_has_files "$fdir"; then
+        knowledge_build_index "$fdir"
+        _append_file "$fdir/knowledge/.index.md" "知识库索引（先看这里，再决定参考哪些文件）"
+        local maxf sel_count sf
+        maxf="$(cfg_get 'knowledge.max_files' '8' 2>/dev/null)"
+        sel_count=0
+        while IFS= read -r sf; do
+          (( sel_count >= maxf )) && break
+          _append_file "$sf" "知识库已选文件"
+          (( sel_count++ ))
+        done < <(knowledge_selection_files "$fdir")
+      fi
     fi
   fi
 }

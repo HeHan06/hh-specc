@@ -49,3 +49,14 @@ pipeline:
 tasks:
   # 单任务自动重试次数（超过则挂起转人工，见 implement 阶段指令）
   max_retry: 1
+
+# ---- 知识库（corpus）配置：辅助上下文，只「选读 + 引用」不复制 ----
+knowledge:
+  # 是否启用知识库机制（false 时 specify 阶段忽略 knowledge/ 目录）
+  enabled: true
+  # 选读决策模式：
+  #   manual = 模型先出候选清单(knowledge/selection.md)，你编辑确认后再重跑读取（推荐）
+  #   auto   = 按 selection.md 直接选读，不经人工编辑
+  selection: manual
+  # 单次最多选读文件数（防上下文超限）
+  max_files: 8

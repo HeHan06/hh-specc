@@ -14,6 +14,7 @@
 set -euo pipefail
 source "$(dirname "$0")/lib/common.sh"
 source "$(dirname "$0")/lib/state.sh"
+source "$(dirname "$0")/lib/knowledge.sh"
 source "$(dirname "$0")/lib/pipeline.sh"
 source "$(dirname "$0")/lib/strip.sh"
 
@@ -24,7 +25,9 @@ specc —— 规范驱动 AI Coding 平台 CLI
 
 用法：
   ./specc.sh init                   初始化框架资产（.specc/）
-  ./specc.sh new <需求ID>            创建需求工作目录
+  ./specc.sh new <需求ID> ["描述"] [--prd <文件|目录>] [--kb <文件|目录>]
+      --prd 需求文档（PRD），进 requirement.md（需求正文）
+      --kb  知识库（参考素材），进 knowledge/（索引+选读；--attach 已退役）
   ./specc.sh status [需求ID]         查看进度与门禁状态
   ./specc.sh <stage> <需求ID>        执行阶段（六阶段）
   ./specc.sh redo <stage> <需求ID>   重置某阶段及其后的门禁
@@ -85,22 +88,34 @@ cmd_init() {
 }
 
 # ---- new：创建需求工作目录（验收用例 TC-A2：重复创建报错不覆盖）----
-# 用法：./specc.sh new <需求ID> ["需求描述"] [--attach <文件|目录>...]
-# 携带描述时写入 requirement.md，供 specify 阶段注入 {REQUIREMENT_TEXT}
-# --attach：把附加材料（文档/目录）并入需求描述。目录会先展示结构树、再读文本文件内容。
+# 用法：./specc.sh new <需求ID> ["需求描述"] [--prd <文件|目录>...] [--kb <文件|目录>...]
+#   - 需求描述：写入 requirement.md，作为 specify 阶段的 {REQUIREMENT_TEXT} 正文来源
+#   - --prd：需求文档（PRD），文本全量并入 requirement.md（需求正文，specify 全文注入）
+#   - --kb ：知识库（corpus 参考材料），复制进 knowledge/，走「索引 + 选读」，不全文灌入
+#   - --attach 已退役：语义模糊（需求正文 vs 参考素材不分），报错并提示改用 --prd / --kb
 cmd_new() {
   local fid="${1:-}"
-  [[ -n "$fid" ]] || die "缺少需求ID，用法：./specc.sh new <需求ID> [\"需求描述\"] [--attach <文件|目录>...]"
+  [[ -n "$fid" ]] || die "缺少需求ID，用法：./specc.sh new <需求ID> [\"需求描述\"] [--prd <文件|目录>...] [--kb <文件|目录>...]"
   shift
 
   local requirement=""
-  local -a attach_paths=()
+  local -a prd_paths=()
+  local -a kb_paths=()
   while (( $# )); do
     case "$1" in
       --attach)
+        die "--attach 已退役（语义模糊：需求正文 vs 参考素材不分）。请改用 --prd（需求文档，进 requirement.md）或 --kb（知识库，进 knowledge/）"
+        ;;
+      --prd)
         shift
-        [[ $# -gt 0 ]] || die "--attach 后需跟文件或目录路径"
-        attach_paths+=("$1")
+        [[ $# -gt 0 ]] || die "--prd 后需跟文件或目录路径"
+        prd_paths+=("$1")
+        shift
+        ;;
+      --kb)
+        shift
+        [[ $# -gt 0 ]] || die "--kb 后需跟文件或目录路径"
+        kb_paths+=("$1")
         shift
         ;;
       --)
@@ -120,7 +135,7 @@ cmd_new() {
   local fdir="$FEATURES_DIR/$fid"
   [[ -e "$fdir" ]] && die "需求已存在：${fdir}（不会覆盖；如需重来请手动删除或使用 redo）"
 
-  mkdir -p "$fdir/contracts"
+  mkdir -p "$fdir/contracts" "$fdir/knowledge"
   state_init "$fdir" "$fid"
   log_ok "需求工作目录已创建：$fdir"
 
@@ -128,24 +143,37 @@ cmd_new() {
     if [[ -n "$requirement" ]]; then
       printf '%s\n' "$requirement"
     else
-      echo "（未填写主描述，请补充一句话需求概述）"
+      echo "（本需求暂未填写描述。请在此补充一句话需求概述；或通过 --prd 挂入需求文档，也可直接进入 specify 由知识库辅助共创。）"
     fi
     echo
-    echo "## 附加材料"
-    local p; local appended=0
-    for p in "${attach_paths[@]}"; do
-      _cmd_new_append "$p" && appended=1
+    echo "## 需求文档（--prd 附加内容）"
+    local p; local prd_cnt=0
+    for p in "${prd_paths[@]}"; do
+      _cmd_new_prd "$p" && prd_cnt=1
     done
-    if (( appended == 0 )); then
-      echo "（未附加任何材料）"
-    fi
+    (( prd_cnt == 1 )) || echo "（未附加需求文档）"
   } > "$fdir/requirement.md"
 
-  if [[ -n "$requirement" || ${#attach_paths[@]} -gt 0 ]]; then
+  # 知识库：把 --kb 的文本文件复制到 knowledge/（只复制，不并入 requirement.md）
+  local kpt; local kb_cnt=0
+  for kpt in "${kb_paths[@]}"; do
+    _cmd_new_kb "$kpt" "$fdir" && kb_cnt=1
+  done
+
+  if [[ -n "$requirement" || ${#prd_paths[@]} -gt 0 ]]; then
     log_ok "需求描述已记录：$fdir/requirement.md"
   else
-    log_warn "未携带需求描述与附加材料：请将需求写入 $fdir/requirement.md 后再执行 specify"
+    log_warn "未携带需求描述与需求文档：请将需求写入 $fdir/requirement.md 后再执行 specify"
   fi
+
+  # 生成知识库索引（若知识库有内容），供 specify 阶段「先看索引再选读」
+  if knowledge_has_files "$fdir"; then
+    knowledge_build_index "$fdir"
+    log_ok "知识库已就绪：$fdir/knowledge/（索引已生成，specify 时先看索引再选读）"
+  else
+    log_warn "知识库为空：specify 将仅凭需求描述进行"
+  fi
+
   log_info "开始第一阶段：./specc.sh specify $fid"
 }
 
@@ -158,34 +186,14 @@ _cmd_new_is_text() {
   esac
 }
 
-# ---- 辅助：输出目录结构树（排除噪音目录，控制条目上限）----
-_cmd_new_tree() {
-  local dir="$1"
-  local rel depth name prefix
-  while IFS= read -r rel; do
-    [[ -z "$rel" ]] && continue
-    name="$(basename "$rel")"
-    depth=$(printf '%s' "$rel" | tr -cd '/' | wc -c)
-    prefix=""
-    (( depth > 0 )) && printf -v prefix '%*s' $((depth * 2)) ''
-    if [[ -d "$dir/$rel" ]]; then
-      printf '%s%s/\n' "$prefix" "$name"
-    else
-      printf '%s%s\n' "$prefix" "$name"
-    fi
-  done < <(find "$dir" -mindepth 1 \( \
-      -name node_modules -o -name .git -o -name target -o -name dist -o -name build \
-      -o -name '.specc-cache' -o -name '*.log' \) -prune -o -type f -print 2>/dev/null | sed "s|^$dir/||" | sort | head -n 120)
-}
-
-# ---- 辅助：把文件/目录的文本并入 requirement.md ----
+# ---- 辅助：把 --prd 指向的文本并入 requirement.md（需求正文，全量）----
 # 返回 0 表示有内容写入，否则返回 1
-_cmd_new_append() {
+_cmd_new_prd() {
   local src="$1"
   if [[ -f "$src" ]]; then
     if _cmd_new_is_text "$src" && [[ -s "$src" ]]; then
       echo
-      echo "### 附件：$(basename "$src")"
+      echo "### 需求文档：$(basename "$src")"
       cat "$src"
       return 0
     fi
@@ -194,10 +202,7 @@ _cmd_new_append() {
   fi
   if [[ -d "$src" ]]; then
     echo
-    echo "### 目录结构：$(basename "$src")/"
-    _cmd_new_tree "$src"
-    echo
-    echo "--- 目录内文本内容 ---"
+    echo "### 需求文档目录：$(basename "$src")/"
     local f; local any=0
     while IFS= read -r f; do
       _cmd_new_is_text "$f" || continue
@@ -210,7 +215,47 @@ _cmd_new_append() {
         -o -name build -o -name '.specc-cache' -o -name '*.log' \) -prune -o -type f -print 2>/dev/null | head -n 200)
     return 0
   fi
-  echo "[警告] 附加材料不存在：$src" >&2
+  echo "[警告] 需求文档不存在：$src" >&2
+  return 1
+}
+
+# ---- 辅助：把 --kb 指向的文件/目录复制进 knowledge/（只复制，不并需求正文）----
+# 返回 0 表示有文件写入知识库，否则返回 1
+_cmd_new_kb() {
+  local src="$1" fdir="$2"
+  local kdir="$fdir/knowledge"
+  mkdir -p "$kdir"
+  if [[ -f "$src" ]]; then
+    if _cmd_new_is_text "$src" && [[ -s "$src" ]]; then
+      cp "$src" "$kdir/"
+      echo "  已归入知识库：$(basename "$src")"
+      return 0
+    fi
+    echo "[警告] 忽略非文本或空文件：$src" >&2
+    return 1
+  fi
+  if [[ -d "$src" ]]; then
+    local f rel n=0
+    while IFS= read -r f; do
+      _cmd_new_is_text "$f" || continue
+      [[ -s "$f" ]] || continue
+      rel="${f#$src/}"
+      mkdir -p "$kdir/$(dirname "$rel")"
+      cp "$f" "$kdir/$rel"
+      (( n++ ))
+    done < <(find "$src" \( \
+        -name node_modules -o -name .git -o -name target -o -name dist -o -name build \
+        -o -name '.specc-cache' -o -name '*.log' -o -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' \
+        -o -name '*.gif' -o -name '*.webp' -o -name '*.bmp' -o -name '*.svg' -o -name '*.class' \) \
+        -prune -o -type f -print 2>/dev/null)
+    if (( n > 0 )); then
+      echo "  已归入知识库：$(basename "$src")/（${n} 个文本文件）"
+      return 0
+    fi
+    echo "[警告] 目录内无可归入的文本文件：$src" >&2
+    return 1
+  fi
+  echo "[警告] 知识库材料不存在：$src" >&2
   return 1
 }
 

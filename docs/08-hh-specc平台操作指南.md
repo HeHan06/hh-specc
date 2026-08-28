@@ -45,22 +45,33 @@ hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言�
 
 版本号单一真相源在 `.specc/config.yaml` 的 `app.version`，与 git tag 保持一致。
 
-### 1.4 多模态输入（new 的 --attach）
+### 1.4 输入需求材料（`--prd` 需求文档 / `--kb` 知识库）
 
-新建需求时，纯文字描述不够用、想附带文档或目录时，用 `--attach`：
+新建需求时，除了用一句话描述需求外，还可挂入两类材料。平台严格区分二者语义，**不再使用旧的 `--attach`**（已退役，语义模糊）：
+
+| 参数 | 语义 | 去向 | 注入方式 |
+|---|---|---|---|
+| `--prd <文件\|目录>` | **需求文档（PRD）**——本次要做什么，是需求正文 | `requirement.md` | specify **全文**注入（作为 `{REQUIREMENT_TEXT}`） |
+| `--kb <文件\|目录>` | **知识库（参考素材）**——长期沉淀、辅助参考 | `knowledge/` | 索引 + 选读，**只读选中** |
 
 ```bash
-# 附单个文件
-./specc.sh new demo "需求概述" --attach ./需求文档.md
+# 需求文档：全文并入 requirement.md，作为需求正文
+./specc.sh new demo "需求概述" --prd ./需求文档.md
 
-# 附整个目录（会先展示目录结构树，再读取其中的文本文件内容）
-./specc.sh new demo "需求概述" --attach ./docs/ --attach ./参考目录/
+# 知识库：复制进 knowledge/，走「索引 + 选读」，不全文灌入
+./specc.sh new demo "需求概述" --kb ./参考目录/ --kb ./术语表.md
+
+# 二者可并用：一份 PRD + 若干参考资料
+./specc.sh new demo "需求概述" --prd ./需求文档.md --kb ./参考目录/
 ```
 
-- **文件**：按扩展名白名单（md/txt/json/yaml/js/jsx/ts/tsx/java/sql/css/scss/html/xml/sh 等）读入，忽略非文本与空文件。
-- **目录**：先输出目录结构树（排除 `node_modules`/`.git`/`target`/`dist`/`build`/`*.log` 等噪音），再逐个读入文本文件内容，并标注来源路径。
-- **图片**：当前引擎为纯文本 prompt，不支持图片二进制输入（后续规划单独做「图片→文字描述」预处理）。
-- 所有附加材料会并入 `features/<需求ID>/requirement.md` 的「附加材料」章节，作为 specify 阶段的需求输入。
+- **文件**：按扩展名白名单（md/txt/json/yaml/js/jsx/ts/tsx/java/sql/css/scss/html/xml/sh 等）读入，忽略非文本与空文件。`--prd` 全量 cat 进 `requirement.md`；`--kb` 复制进 `knowledge/`。
+- **目录**：`--prd` 读入目录内全部文本文件（标注来源）；`--kb` 递归复制文本文件到 `knowledge/`（保留相对路径），并过滤 `node_modules`/`.git`/`target`/`dist`/`build`/`*.log` 及图片/`.class` 等非文本噪音。
+- **知识库选读机制**：`--kb` 的内容不会一股脑灌进上下文。`new` 时会自动生成 `knowledge/.index.md`（仅每个文件的标题行摘要），specify 阶段先只给模型这份**索引**；模型据此写出候选清单 `knowledge/selection.md`（每行一个相对路径），你编辑确认后重跑 `specify`，系统才把**选中的那几份**全文注入。上下文从「全量」收敛为「索引 + 3~5 份选中」，且你不会蹲在命令行猜挂哪个文件。
+- **图片**：当前引擎接收的是文本 prompt，图片二进制本身不直接作为输入。但框架已支持**按环节自动切换视觉多模态模型**（`model.vision.id`，默认 `deepseek-v4-flash-vision-exp`）——凡上下文带有图片路径引用（markdown 图片 / 【附图:path】 / 裸图片路径，如 UI 预设的首页设计图、`--prd` 目录里的图片路径），该环节会自动用视觉模型，模型即可「看图」理解布局与风格。
+- **需求描述缺省**：无 `--prd` 也无描述时，`requirement.md` 写入占位提示（见下方「空需求占位」），可后续手动补充，或先进入 specify 由知识库辅助共创。
+
+> `--attach` 已被退役。若仍使用会直接报错并提示改用 `--prd`（需求文档，进 `requirement.md`）或 `--kb`（知识库，进 `knowledge/`）。
 
 ---
 
@@ -69,8 +80,9 @@ hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言�
 | 命令 | 作用 |
 |---|---|
 | `./specc.sh init` | 初始化/校验平台资产与工作目录 |
-| `./specc.sh new <需求ID> ["需求描述"]` | 创建需求工作目录（可携带需求描述） |
-| `./specc.sh new <需求ID> ["描述"] --attach <文件\|目录>...` | 创建需求并附加多模态材料（见 §1.4） |
+| `./specc.sh new <需求ID> ["描述"]` | 创建需求工作目录（可携带需求描述） |
+| `./specc.sh new <需求ID> ["描述"] --prd <文件\|目录>...` | 创建需求并挂入**需求文档（PRD）**（进 `requirement.md` 全文注入，见 §1.4） |
+| `./specc.sh new <需求ID> ["描述"] --kb <文件\|目录>...` | 创建需求并挂入**知识库**（进 `knowledge/`，索引+选读，见 §1.4） |
 | `./specc.sh status [需求ID]` | 查看阶段进度、门禁状态、任务进度、审计历史 |
 | `./specc.sh <stage> <需求ID>` | 执行六阶段之一 |
 | `./specc.sh redo <stage> <需求ID>` | 重置某阶段及之后的门禁（保留之前阶段） |
@@ -79,6 +91,8 @@ hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言�
 | `./specc.sh reject <需求ID> <意见>` | 异步审批：否决待审阶段 |
 | `./specc.sh help` | 帮助（`-h` / `--help` 等价） |
 | `./specc.sh --version` | 版本号（`-v` / `version` 等价） |
+
+> `--attach` 已退役（语义模糊），改用 `--prd`（需求文档） / `--kb`（知识库）。
 
 需求 ID 规则：仅允许字母、数字、连字符，且以字母数字开头（防止路径穿越）。
 
@@ -136,11 +150,13 @@ engine:
   output_dir: .specc-cache/prompts   # 提示词组装输出目录
 
 model:                      # 切模型只改这里，lib/engines.sh 自动生成 Codex 配置
-  id: deepseek-v4-flash-vision-exp
+  id: deepseek-v4-pro       # 默认推理/文本模型（绝大多数阶段使用）
   provider: deepseek
   base_url: https://api.deepseek.com
   wire_api: responses
   api_key_env: DEEPSEEK_API_KEY   # 密钥走环境变量，不入库
+  vision:                     # 多模态视觉模型：上下文带图时自动切换（其余字段继承上层）
+    id: deepseek-v4-flash-vision-exp
 
 pipeline:
   profile: full             # full 六阶段全走（light/change 为 v0.2 规划）
@@ -148,11 +164,16 @@ pipeline:
 
 tasks:
   max_retry: 1              # 单任务失败自动重试次数
+
+knowledge:                  # 知识库（corpus）选读配置
+  enabled: true             # 是否启用知识库机制（false 时 specify 忽略 knowledge/）
+  selection: manual         # manual=模型先出候选清单，你编辑确认后再读；auto=直接按清单读
+  max_files: 8              # 单次最多选读文件数（防上下文超限）
 ```
 
 **密钥安全**：密钥只从环境变量读取（`DEEPSEEK_API_KEY`），禁止写入 config.yaml 或任何代码/文档（宪法 2.1）。
 
-> 模型 ID 可随时在 `model.id` 切换（如 vision 模型与深度推理模型之间），改后 `lib/engines.sh` 会据此重新生成 Codex 配置，无需手动改 `~/.codex/config.toml`。
+> 模型按环节自动切换：默认用 `model.id`（v4-pro 推理/文本）；当某阶段上下文携带图片引用（markdown 图片 / 【附图:path】 / 裸图片路径）时会自动改用 `model.vision.id`（视觉多模态），无需手动干预。切换模型只需改 `model.id` / `model.vision.id`，改后 `lib/engines.sh` 会据此重新生成 Codex 配置，无需手动改 `~/.codex/config.toml`。
 
 ---
 
@@ -162,7 +183,8 @@ tasks:
 hh-specc/
 ├── .specc/             # 平台资产（宪法/平台层/模板/指令/配置）—— 新增需求零改动
 ├── lib/ specc.sh       # 编排层（CLI + 流程引擎 + 门禁 + 组装器 + 引擎适配）
-├── features/<需求ID>/   # 规格产物（spec/plan/tasks/contracts + 业务层知识 + state.json）
+├── features/<需求ID>/   # 规格产物（spec/plan/tasks/contracts + 业务层知识 + knowledge 知识库 + state.json）
+│   └── knowledge/      # 本需求专属知识库（--kb 挂入；含 .index.md 索引 + selection.md 选读清单）
 ├── projects/<需求ID>/   # 代码产物（backend/ shared/ web-admin/ miniprogram/）
 └── docs/               # 项目文档
 ```
@@ -212,6 +234,17 @@ hh-specc/
 ```
 
 产物：`features/daily-quote/`（含 `contracts/` 子目录、`state.json`、`requirement.md`）。
+
+若想挂入需求文档或知识库，可用 `--prd` / `--kb`（见 §1.4）：
+
+```bash
+# 挂一份需求文档（PRD）+ 几份参考素材（知识库）
+./specc.sh new ai-guide "AI Agent 方向岗位面试指南 web 平台" \
+  --prd ./需求说明书.md \
+  --kb ~/Documents/AI-Guide/AI/Agent知识 --kb ~/Documents/AI-Guide/简历优化
+```
+
+挂入知识库后，specify 时系统会先给模型知识库**索引**（标题行摘要），模型写出候选清单 `knowledge/selection.md` 供你确认，确认后重跑 specify 才注入选中文件全文（详见 §1.4「知识库选读机制」）。
 
 ### 7.2 specify（需求规格化）
 
