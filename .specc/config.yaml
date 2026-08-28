@@ -22,7 +22,7 @@ engine:
 # ---- 模型配置（可切换，不硬编码）----
 # 切换模型只需修改本段，lib/engines.sh 会自动据此生成 Codex 配置。
 model:
-  # 模型 ID
+  # 默认模型 ID：绝大多数阶段（文本/推理）使用
   id: deepseek-v4-pro
   # provider 标识：对应 Codex config.toml 的 model_provider（可自定义）
   provider: deepseek
@@ -34,6 +34,9 @@ model:
   wire_api: responses
   # 密钥所在的环境变量名（密钥本身不入库）
   api_key_env: DEEPSEEK_API_KEY
+  # 多模态（视觉）模型：仅在「需要看图片」的环节使用，其余字段继承顶层 model
+  vision:
+    id: deepseek-v4-flash-vision-exp
 
 # ---- 流程配置 ----
 pipeline:

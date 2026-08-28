@@ -22,6 +22,8 @@ hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言�
 | Codex CLI | 引擎适配层（调用模型生成产物） | 可选：未装则退化为 Manual 人工模式 |
 | 模型密钥环境变量 | `DEEPSEEK_API_KEY` | 仅 codex 引擎模式需要 |
 
+> 密钥建议写入 `~/.zshrc`（`export DEEPSEEK_API_KEY="..."`），一次配置、每个新终端会话自动生效，无需每次手动 export。
+
 > 业务项目自身依赖（如 Java 17、Node、PostgreSQL）由**具体需求**决定，不在平台前置条件内。本文 §7 的示例需求（双端项目）需要它们。
 
 ### 1.2 初始化
@@ -43,6 +45,23 @@ hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言�
 
 版本号单一真相源在 `.specc/config.yaml` 的 `app.version`，与 git tag 保持一致。
 
+### 1.4 多模态输入（new 的 --attach）
+
+新建需求时，纯文字描述不够用、想附带文档或目录时，用 `--attach`：
+
+```bash
+# 附单个文件
+./specc.sh new demo "需求概述" --attach ./需求文档.md
+
+# 附整个目录（会先展示目录结构树，再读取其中的文本文件内容）
+./specc.sh new demo "需求概述" --attach ./docs/ --attach ./参考目录/
+```
+
+- **文件**：按扩展名白名单（md/txt/json/yaml/js/jsx/ts/tsx/java/sql/css/scss/html/xml/sh 等）读入，忽略非文本与空文件。
+- **目录**：先输出目录结构树（排除 `node_modules`/`.git`/`target`/`dist`/`build`/`*.log` 等噪音），再逐个读入文本文件内容，并标注来源路径。
+- **图片**：当前引擎为纯文本 prompt，不支持图片二进制输入（后续规划单独做「图片→文字描述」预处理）。
+- 所有附加材料会并入 `features/<需求ID>/requirement.md` 的「附加材料」章节，作为 specify 阶段的需求输入。
+
 ---
 
 ## 2. 命令速查表
@@ -51,6 +70,7 @@ hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言�
 |---|---|
 | `./specc.sh init` | 初始化/校验平台资产与工作目录 |
 | `./specc.sh new <需求ID> ["需求描述"]` | 创建需求工作目录（可携带需求描述） |
+| `./specc.sh new <需求ID> ["描述"] --attach <文件\|目录>...` | 创建需求并附加多模态材料（见 §1.4） |
 | `./specc.sh status [需求ID]` | 查看阶段进度、门禁状态、任务进度、审计历史 |
 | `./specc.sh <stage> <需求ID>` | 执行六阶段之一 |
 | `./specc.sh redo <stage> <需求ID>` | 重置某阶段及之后的门禁（保留之前阶段） |
@@ -116,7 +136,7 @@ engine:
   output_dir: .specc-cache/prompts   # 提示词组装输出目录
 
 model:                      # 切模型只改这里，lib/engines.sh 自动生成 Codex 配置
-  id: deepseek-v4-pro
+  id: deepseek-v4-flash-vision-exp
   provider: deepseek
   base_url: https://api.deepseek.com
   wire_api: responses
@@ -131,6 +151,8 @@ tasks:
 ```
 
 **密钥安全**：密钥只从环境变量读取（`DEEPSEEK_API_KEY`），禁止写入 config.yaml 或任何代码/文档（宪法 2.1）。
+
+> 模型 ID 可随时在 `model.id` 切换（如 vision 模型与深度推理模型之间），改后 `lib/engines.sh` 会据此重新生成 Codex 配置，无需手动改 `~/.codex/config.toml`。
 
 ---
 

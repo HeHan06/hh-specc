@@ -39,15 +39,42 @@ engine_codex_available() {
   return 0
 }
 
+# ---- 判定本次调用是否需要「看图片」的多模态模型 ----
+# 规则：若该环节的上下文（prompt）中携带了图片引用（markdown 图片 / 【附图】/ 图片路径），
+# 则自动切换到 model.vision 模型；否则一律用默认 model.id（v4-pro）。
+# 这是「需要图片的环节自动用多模态，否则用 v4-pro」的自动化判定实现。
+_prompt_needs_vision() {
+  local prompt_file="$1"
+  [[ -f "$prompt_file" ]] || return 1
+  # 匹配以下任一「上下文里带图片」的信号：
+  #   1. markdown 图片：![alt](xxx.png)
+  #   2. 【附图:xxx.png】 章节标记
+  #   3. 裸图片路径（asset/logo.png、img/banner.jpg 等独立词）
+  grep -qiE '!\[[^]]*\]\([^)]*\.(png|jpe?g|gif|webp|bmp|svg)\)|\b【附图[：:]\s*\S+\.(png|jpe?g|gif|webp|bmp|svg)\b|[A-Za-z0-9_./-]+\.(png|jpe?g|gif|webp|bmp|svg)' "$prompt_file"
+  return $?
+}
+
+# ---- 解析本次调用应使用的模型 ID ----
+# 默认用 model.id；上下文带图片时用 model.vision.id（其余继承顶层，仅 ID 不同）。
+# 用法：_resolve_model_id <prompt_file>
+_resolve_model_id() {
+  local prompt_file="$1"
+  if _prompt_needs_vision "$prompt_file"; then
+    cfg_get 'model.vision.id' "$(cfg_get 'model.id' 'deepseek-v4-pro')"
+  else
+    cfg_get 'model.id' 'deepseek-v4-pro'
+  fi
+}
+
 # ---- 根据 .specc/config.yaml 动态生成 Codex 配置 ----
 # 目的：切换模型只需改 config.yaml 的 model 段，无需手改 ~/.codex/config.toml。
+# 用法：_gen_codex_config <输出文件> <模型ID>
 # 输出：写入 CODEX_HOME 下的 config.toml（IDE 沙箱不可写 ~/.codex 时同样生效）
 _gen_codex_config() {
-  local out="$1"
-  local provider provider_name model_id base_url wire_api key_env
+  local out="$1" model_id="$2"
+  local provider provider_name base_url wire_api key_env
   provider="$(cfg_get 'model.provider' 'deepseek')"
   provider_name="$(cfg_get 'model.provider_name' 'DeepSeek')"
-  model_id="$(cfg_get 'model.id' 'deepseek-v4-pro')"
   base_url="$(cfg_get 'model.base_url' 'https://api.deepseek.com')"
   wire_api="$(cfg_get 'model.wire_api' 'responses')"
   key_env="$(cfg_get 'model.api_key_env' 'DEEPSEEK_API_KEY')"
@@ -88,8 +115,9 @@ engine_run_codex() {
     die "未安装 Codex CLI：请先安装（npm i -g @openai/codex 或参考官方文档）"
 
   local model_id base_url
-  model_id="$(cfg_get 'model.id' 'qwen3.8-max')"
-  base_url="$(cfg_get 'model.base_url' 'https://dashscope.aliyuncs.com/compatible-mode/v1')"
+  # 模型按环节自动解析：上下文带图片 → 用 vision 多模态；否则用默认 v4-pro
+  model_id="$(_resolve_model_id "$prompt_file")"
+  base_url="$(cfg_get 'model.base_url' 'https://api.deepseek.com')"
 
   log_info "引擎：Codex Harness ｜ 模型：${model_id} ｜ 端点：${base_url}"
   log_info "阶段：${stage} ｜ 需求：$(basename "$fdir")"
@@ -113,7 +141,7 @@ ${deliverables}
   # 配置由 _gen_codex_config 根据 config.yaml 动态生成，无需依赖 ~/.codex。
   local codex_home="$SPECC_ROOT/$(cfg_get 'engine.output_dir' '.specc-cache')/codex-home"
   mkdir -p "$codex_home"
-  _gen_codex_config "$codex_home/config.toml"
+  _gen_codex_config "$codex_home/config.toml" "$model_id"
   export CODEX_HOME="$codex_home"
 
   # codex exec：非交互模式、跳过 git 仓库检查（本仓库可能刚初始化）

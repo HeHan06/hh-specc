@@ -85,33 +85,133 @@ cmd_init() {
 }
 
 # ---- new：创建需求工作目录（验收用例 TC-A2：重复创建报错不覆盖）----
-# 用法：./specc.sh new <需求ID> ["需求描述"]
+# 用法：./specc.sh new <需求ID> ["需求描述"] [--attach <文件|目录>...]
 # 携带描述时写入 requirement.md，供 specify 阶段注入 {REQUIREMENT_TEXT}
+# --attach：把附加材料（文档/目录）并入需求描述。目录会先展示结构树、再读文本文件内容。
 cmd_new() {
   local fid="${1:-}"
-  local requirement="${2:-}"
-  [[ -n "$fid" ]] || die "缺少需求ID，用法：./specc.sh new <需求ID> [\"需求描述\"]"
+  [[ -n "$fid" ]] || die "缺少需求ID，用法：./specc.sh new <需求ID> [\"需求描述\"] [--attach <文件|目录>...]"
+  shift
+
+  local requirement=""
+  local -a attach_paths=()
+  while (( $# )); do
+    case "$1" in
+      --attach)
+        shift
+        [[ $# -gt 0 ]] || die "--attach 后需跟文件或目录路径"
+        attach_paths+=("$1")
+        shift
+        ;;
+      --)
+        shift; break ;;
+      *)
+        [[ -n "$requirement" ]] && requirement+=$'\n'
+        requirement+="$1"
+        shift
+        ;;
+    esac
+  done
+
   require_init
   # 需求ID合法性：仅允许字母数字与连字符（防止路径穿越）
   [[ "$fid" =~ ^[A-Za-z0-9][A-Za-z0-9-]*$ ]] || die "需求ID只允许字母、数字与连字符，且以字母数字开头"
 
   local fdir="$FEATURES_DIR/$fid"
-  # 注意：变量后紧跟中文全角字符时必须用 ${} 包裹，
-  # 否则 UTF-8 环境下 bash 会把全角字符并入变量名（unbound variable）
   [[ -e "$fdir" ]] && die "需求已存在：${fdir}（不会覆盖；如需重来请手动删除或使用 redo）"
 
   mkdir -p "$fdir/contracts"
   state_init "$fdir" "$fid"
   log_ok "需求工作目录已创建：$fdir"
 
-  if [[ -n "$requirement" ]]; then
-    # 需求描述落盘：specify 阶段的唯一需求输入口
-    printf '%s\n' "$requirement" > "$fdir/requirement.md"
+  {
+    if [[ -n "$requirement" ]]; then
+      printf '%s\n' "$requirement"
+    else
+      echo "（未填写主描述，请补充一句话需求概述）"
+    fi
+    echo
+    echo "## 附加材料"
+    local p; local appended=0
+    for p in "${attach_paths[@]}"; do
+      _cmd_new_append "$p" && appended=1
+    done
+    if (( appended == 0 )); then
+      echo "（未附加任何材料）"
+    fi
+  } > "$fdir/requirement.md"
+
+  if [[ -n "$requirement" || ${#attach_paths[@]} -gt 0 ]]; then
     log_ok "需求描述已记录：$fdir/requirement.md"
   else
-    log_warn "未携带需求描述：请将需求写入 $fdir/requirement.md 后再执行 specify"
+    log_warn "未携带需求描述与附加材料：请将需求写入 $fdir/requirement.md 后再执行 specify"
   fi
   log_info "开始第一阶段：./specc.sh specify $fid"
+}
+
+# ---- 辅助：是否为可读文本文件（按扩展名白名单）----
+_cmd_new_is_text() {
+  case "${1##*.}" in
+    md|txt|markdown|adoc|json|yaml|yml|js|jsx|ts|tsx|java|sql|css|scss|html|xml|properties|conf|ini|sh|go|py|rb)
+      return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# ---- 辅助：输出目录结构树（排除噪音目录，控制条目上限）----
+_cmd_new_tree() {
+  local dir="$1"
+  local rel depth name prefix
+  while IFS= read -r rel; do
+    [[ -z "$rel" ]] && continue
+    name="$(basename "$rel")"
+    depth=$(printf '%s' "$rel" | tr -cd '/' | wc -c)
+    prefix=""
+    (( depth > 0 )) && printf -v prefix '%*s' $((depth * 2)) ''
+    if [[ -d "$dir/$rel" ]]; then
+      printf '%s%s/\n' "$prefix" "$name"
+    else
+      printf '%s%s\n' "$prefix" "$name"
+    fi
+  done < <(find "$dir" -mindepth 1 \( \
+      -name node_modules -o -name .git -o -name target -o -name dist -o -name build \
+      -o -name '.specc-cache' -o -name '*.log' \) -prune -o -type f -print 2>/dev/null | sed "s|^$dir/||" | sort | head -n 120)
+}
+
+# ---- 辅助：把文件/目录的文本并入 requirement.md ----
+# 返回 0 表示有内容写入，否则返回 1
+_cmd_new_append() {
+  local src="$1"
+  if [[ -f "$src" ]]; then
+    if _cmd_new_is_text "$src" && [[ -s "$src" ]]; then
+      echo
+      echo "### 附件：$(basename "$src")"
+      cat "$src"
+      return 0
+    fi
+    echo "[警告] 忽略非文本或空文件：$src" >&2
+    return 1
+  fi
+  if [[ -d "$src" ]]; then
+    echo
+    echo "### 目录结构：$(basename "$src")/"
+    _cmd_new_tree "$src"
+    echo
+    echo "--- 目录内文本内容 ---"
+    local f; local any=0
+    while IFS= read -r f; do
+      _cmd_new_is_text "$f" || continue
+      [[ -s "$f" ]] || continue
+      echo
+      echo "### 资源：$(basename "$src")/${f#$src/}"
+      cat "$f"
+      any=1
+    done < <(find "$src" \( -name node_modules -o -name .git -o -name target -o -name dist \
+        -o -name build -o -name '.specc-cache' -o -name '*.log' \) -prune -o -type f -print 2>/dev/null | head -n 200)
+    return 0
+  fi
+  echo "[警告] 附加材料不存在：$src" >&2
+  return 1
 }
 
 # ---- status：展示进度（验收用例 TC-A3）----
