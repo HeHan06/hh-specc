@@ -5,7 +5,7 @@
 #   ./specc.sh init                 初始化 .specc/ 资产骨架
 #   ./specc.sh new <需求ID>          创建需求工作目录
 #   ./specc.sh status [需求ID]       查看阶段进度与门禁状态
-#   ./specc.sh <stage> <需求ID>      执行阶段（specify/clarify/plan/tasks/implement/verify）
+#   ./specc.sh <stage> <需求ID>      执行阶段（probe/clarify/plan/tasks/implement/verify）
 #   ./specc.sh redo <stage> <需求ID> 重置某阶段及其后的门禁
 #   ./specc.sh help                 帮助
 # 设计：CLI 不含业务逻辑，只做路由与交互；规则在流程引擎与门禁系统中
@@ -29,13 +29,13 @@ specc —— 规范驱动 AI Coding 平台 CLI
       --prd 需求文档（PRD），进 requirement.md（需求正文）
       --kb  知识库（参考素材），进 knowledge/（索引+选读；--attach 已退役）
   ./specc.sh status [需求ID]         查看进度与门禁状态
-  ./specc.sh <stage> <需求ID>        执行阶段（六阶段）
+  ./specc.sh <stage> <需求ID>        执行阶段（七阶段）
   ./specc.sh redo <stage> <需求ID>   重置某阶段及其后的门禁
   ./specc.sh strip <需求ID> [--apply] 剥离可观测性注解/标签（交付前清理，默认预览）
   ./specc.sh help                   显示本帮助
   ./specc.sh --version              显示版本号
 
-六阶段：specify → clarify → plan → tasks → implement → verify
+七阶段：probe → specify → clarify → plan → tasks → implement → verify
 EOF
 }
 
@@ -60,10 +60,12 @@ cmd_init() {
     ".specc/platform/web-admin-standards.md"
     ".specc/platform/api-conventions.md"
     ".specc/config.yaml"
+    ".specc/templates/probe-checklist.template.md"
     ".specc/templates/spec.template.md"
     ".specc/templates/plan.template.md"
     ".specc/templates/tasks.template.md"
     ".specc/templates/contract.template.md"
+    ".specc/prompts/probe.md"
     ".specc/prompts/specify.md"
     ".specc/prompts/clarify.md"
     ".specc/prompts/plan.md"
@@ -143,38 +145,43 @@ cmd_new() {
     if [[ -n "$requirement" ]]; then
       printf '%s\n' "$requirement"
     else
-      echo "（本需求暂未填写描述。请在此补充一句话需求概述；或通过 --prd 挂入需求文档，也可直接进入 specify 由知识库辅助共创。）"
+      echo "（本需求暂未填写描述。请在此补充一句话需求概述；或通过 --prd 挂入需求文档。该描述将作为探询起点。）"
     fi
     echo
     echo "## 需求文档（--prd 附加内容）"
     local p; local prd_cnt=0
-    for p in "${prd_paths[@]}"; do
-      _cmd_new_prd "$p" && prd_cnt=1
-    done
+    # macOS bash 3.2 在 set -u 下，空数组 "${arr[@]}" 展开会报 unbound variable，须先判空
+    if (( ${#prd_paths[@]} > 0 )); then
+      for p in "${prd_paths[@]}"; do
+        _cmd_new_prd "$p" && prd_cnt=1
+      done
+    fi
     (( prd_cnt == 1 )) || echo "（未附加需求文档）"
   } > "$fdir/requirement.md"
 
   # 知识库：把 --kb 的文本文件复制到 knowledge/（只复制，不并入 requirement.md）
   local kpt; local kb_cnt=0
-  for kpt in "${kb_paths[@]}"; do
-    _cmd_new_kb "$kpt" "$fdir" && kb_cnt=1
-  done
+  if (( ${#kb_paths[@]} > 0 )); then
+    for kpt in "${kb_paths[@]}"; do
+      _cmd_new_kb "$kpt" "$fdir" && kb_cnt=1
+    done
+  fi
 
   if [[ -n "$requirement" || ${#prd_paths[@]} -gt 0 ]]; then
     log_ok "需求描述已记录：$fdir/requirement.md"
   else
-    log_warn "未携带需求描述与需求文档：请将需求写入 $fdir/requirement.md 后再执行 specify"
+    log_warn "未携带需求描述与需求文档：请将需求写入 $fdir/requirement.md 后再执行 probe"
   fi
 
-  # 生成知识库索引（若知识库有内容），供 specify 阶段「先看索引再选读」
+  # 生成知识库索引（若知识库有内容），供 probe/specify 阶段「先看索引再选读」
   if knowledge_has_files "$fdir"; then
     knowledge_build_index "$fdir"
-    log_ok "知识库已就绪：$fdir/knowledge/（索引已生成，specify 时先看索引再选读）"
+    log_ok "知识库已就绪：$fdir/knowledge/（索引已生成，probe 时先看索引再探询）"
   else
-    log_warn "知识库为空：specify 将仅凭需求描述进行"
+    log_warn "知识库为空：probe 将仅凭需求描述进行"
   fi
 
-  log_info "开始第一阶段：./specc.sh specify $fid"
+  log_info "开始第一阶段（需求探询）：./specc.sh probe $fid"
 }
 
 # ---- 辅助：是否为可读文本文件（按扩展名白名单）----
@@ -335,7 +342,7 @@ main() {
       local fdir; fdir="$(require_feature "$fid")"
       pipeline_review "$cmd" "$fdir" "$opinion"
       ;;
-    specify|clarify|plan|tasks|implement|verify)
+    probe|specify|clarify|plan|tasks|implement|verify)
       local stage="$cmd"; shift
       local fid="${1:-}"
       require_init

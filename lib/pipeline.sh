@@ -20,6 +20,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/observability.sh"
 stage_deliverables() {
   local stage="$1" fdir="$2"
   case "$stage" in
+    probe)    echo "- $fdir/probe-questions.md（需求探询问题清单，供用户逐条回答）"
+              echo "- 用户将答案写入 $fdir/probe-answers.md（完整需求输入，specify 据此生成规格）" ;;
     specify)  echo "- $fdir/spec.md（EARS 需求 + 端归属 + 验收标准 + 不做什么）"
               echo "- $fdir/business.md $fdir/data-model.md $fdir/flows.md（业务层知识三件套，后续阶段注入）" ;;
     clarify)  echo "- $fdir/clarify.md（问答记录）"
@@ -91,6 +93,12 @@ pipeline_run_stage() {
   # 收集本阶段的额外输入文件（上一阶段产物等）
   local extras=()
   case "$stage" in
+    probe)     [[ -f "$fdir/requirement.md" ]] && extras+=("$fdir/requirement.md")  # 探询起点：用户第一句话
+               [[ -f "$fdir/probe-answers.md" ]] && extras+=("$fdir/probe-answers.md")  # 多轮：若已答，据此收敛/追问
+               if [[ "$(cfg_get 'knowledge.enabled' 'true' 2>/dev/null)" == "true" ]]; then
+                 [[ -f "$fdir/knowledge/.index.md" ]] && extras+=("$fdir/knowledge/.index.md")  # 知识库索引辅助判断遗漏主题
+               fi ;;
+    specify)   ;;   # 需求输入由 assemble.sh 第 6 步专用处理（优先探询沉淀，其次 requirement.md），此处不重复
     clarify)   [[ -f "$fdir/spec.md" ]] && extras+=("$fdir/spec.md")
                # 人工提前提供的澄清答案（可选）：若存在则注入，模型据此直接回填
                [[ -f "$fdir/clarify-answers.md" ]] && extras+=("$fdir/clarify-answers.md") ;;

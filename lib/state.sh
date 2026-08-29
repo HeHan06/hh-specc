@@ -9,8 +9,10 @@
 
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
-# 六阶段固定顺序（全流程 full profile）
-SPECC_STAGES=(specify clarify plan tasks implement verify)
+# 七阶段固定顺序（全流程 full profile）
+# probe：需求探询（新增）——先补全用户「能说的」，再让 specify 基于完整需求生成真规格；
+# clarify：改为「信息完整后」的补盲/评审（用户忽略的点），不再是救草稿。
+SPECC_STAGES=(probe specify clarify plan tasks implement verify)
 
 # ---- 内部：确认 python3 可用 ----
 _require_python() {
@@ -24,11 +26,11 @@ state_init() {
   python3 - "$fdir/state.json" "$fid" <<'PYEOF'
 import json, sys, datetime
 path, fid = sys.argv[1], sys.argv[2]
-stages = ["specify", "clarify", "plan", "tasks", "implement", "verify"]
+stages = ["probe", "specify", "clarify", "plan", "tasks", "implement", "verify"]
 data = {
     "feature": fid,                                  # 需求ID
     "created_at": datetime.datetime.now().isoformat(timespec="seconds"),
-    "stage": "specify",                              # 当前所处阶段
+    "stage": "probe",                                # 当前所处阶段
     "gates": {s: "pending" for s in stages},         # 各阶段门禁状态
     "tasks": {},                                     # implement 阶段任务进度
     "history": []                                    # 审计链：事件与人工审查记录

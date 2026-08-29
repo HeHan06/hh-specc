@@ -18,6 +18,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/knowledge.sh"
 _platform_files_for_stage() {
   local stage="$1"
   case "$stage" in
+    probe)
+      echo "" ;;                                          # 探询阶段保持纯净，不注入技术规约
     specify)
       echo "" ;;                                          # 规格阶段保持纯净，不注入技术规约
     clarify)
@@ -80,16 +82,30 @@ assemble_context() {
   # 5) 阶段指令（放最后，靠近执行要求）
   _append_file "$SPECC_DIR/prompts/$stage.md" "本阶段指令"
 
+  # 5.5) probe 阶段：注入需求要素清单模板（九维唯一源）+ 知识库索引
+  if [[ "$stage" == "probe" ]]; then
+    _append_file "$SPECC_DIR/templates/probe-checklist.template.md" "需求要素清单（probe 九维模板）"
+    if [[ "$(cfg_get 'knowledge.enabled' 'true' 2>/dev/null)" == "true" && -d "$fdir/knowledge" ]] && knowledge_has_files "$fdir"; then
+      knowledge_build_index "$fdir"
+      _append_file "$fdir/knowledge/.index.md" "知识库索引（辅助判断用户可能遗漏的主题）"
+    fi
+  fi
+
   # 6) specify 阶段：注入需求描述（替换阶段指令中的 {REQUIREMENT_TEXT} 占位符）
-  #    需求描述是 specify 的唯一需求输入口，由 ./specc.sh new 落盘到 requirement.md
+  #    需求输入优先级：probe 探询沉淀的完整需求 > 原始 requirement.md
+  #    背景：specify 应基于「已澄清的信息」而非用户第一句话，否则生成的是错误地基上的草稿。
   if [[ "$stage" == "specify" ]]; then
     local req_file="$fdir/requirement.md"
-    if [[ -f "$req_file" ]]; then
+    local probe_answers="$fdir/probe-answers.md"
+    if [[ -s "$probe_answers" ]]; then
+      _append_file "$probe_answers" "需求探询沉淀（用户逐条回答，作为完整需求输入）"
+      _append_file "$req_file" "需求描述（原始输入，仅作背景参考）"
+    elif [[ -f "$req_file" ]]; then
       _append_file "$req_file" "需求描述（原始输入，请注入指令中的 {REQUIREMENT_TEXT}）"
     else
       echo ""
       echo "========== ⚠ 警告：未找到需求描述（$req_file）=========="
-      echo "specify 阶段缺少需求输入，产物可能为空或不完整。请先补充需求描述。"
+      echo "specify 阶段缺少需求输入，产物可能为空或不完整。请先补充需求描述或先执行 probe。"
     fi
 
     # 6.5) 知识库：只注入「索引 + 已选文件」，避免全量灌入稀释重点（corpus 选读）

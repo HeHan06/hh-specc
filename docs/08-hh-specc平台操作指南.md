@@ -7,7 +7,7 @@
 
 ## 0. 一句话理解 hh-specc
 
-hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言需求交给它，它按六阶段流程（`specify → clarify → plan → tasks → implement → verify`）逐阶段生成规格与代码，每一步都经过「自动门禁 + 人工检查点」双闸门，最终产出**规格资产 + 可运行代码 + 审计线索**三类交付物。
+hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言需求交给它，它按七阶段流程（`probe → specify → clarify → plan → tasks → implement → verify`）先帮你把需求探询补全，再逐阶段生成规格与代码，每一步都经过「自动门禁 + 人工检查点」双闸门，最终产出**规格资产 + 可运行代码 + 审计线索**三类交付物。
 
 ---
 
@@ -67,9 +67,9 @@ hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言�
 
 - **文件**：按扩展名白名单（md/txt/json/yaml/js/jsx/ts/tsx/java/sql/css/scss/html/xml/sh 等）读入，忽略非文本与空文件。`--prd` 全量 cat 进 `requirement.md`；`--kb` 复制进 `knowledge/`。
 - **目录**：`--prd` 读入目录内全部文本文件（标注来源）；`--kb` 递归复制文本文件到 `knowledge/`（保留相对路径），并过滤 `node_modules`/`.git`/`target`/`dist`/`build`/`*.log` 及图片/`.class` 等非文本噪音。
-- **知识库选读机制**：`--kb` 的内容不会一股脑灌进上下文。`new` 时会自动生成 `knowledge/.index.md`（仅每个文件的标题行摘要），specify 阶段先只给模型这份**索引**；模型据此写出候选清单 `knowledge/selection.md`（每行一个相对路径），你编辑确认后重跑 `specify`，系统才把**选中的那几份**全文注入。上下文从「全量」收敛为「索引 + 3~5 份选中」，且你不会蹲在命令行猜挂哪个文件。
+- **知识库选读机制**：`--kb` 的内容不会一股脑灌进上下文。`new` 时会自动生成 `knowledge/.index.md`（仅每个文件的标题行摘要），probe/specify 阶段先只给模型这份**索引**；模型据此写出候选清单 `knowledge/selection.md`（每行一个相对路径），你编辑确认后重跑相应阶段，系统才把**选中的那几份**全文注入。上下文从「全量」收敛为「索引 + 3~5 份选中」，且你不会蹲在命令行猜挂哪个文件。
 - **图片**：当前引擎接收的是文本 prompt，图片二进制本身不直接作为输入。但框架已支持**按环节自动切换视觉多模态模型**（`model.vision.id`，默认 `deepseek-v4-flash-vision-exp`）——凡上下文带有图片路径引用（markdown 图片 / 【附图:path】 / 裸图片路径，如 UI 预设的首页设计图、`--prd` 目录里的图片路径），该环节会自动用视觉模型，模型即可「看图」理解布局与风格。
-- **需求描述缺省**：无 `--prd` 也无描述时，`requirement.md` 写入占位提示（见下方「空需求占位」），可后续手动补充，或先进入 specify 由知识库辅助共创。
+- **需求描述缺省**：无 `--prd` 也无描述时，`requirement.md` 写入占位提示（见下方「空需求占位」），作为 probe 探询的阶段起点，可由探询/后续手动补充。
 
 > `--attach` 已被退役。若仍使用会直接报错并提示改用 `--prd`（需求文档，进 `requirement.md`）或 `--kb`（知识库，进 `knowledge/`）。
 
@@ -84,7 +84,7 @@ hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言�
 | `./specc.sh new <需求ID> ["描述"] --prd <文件\|目录>...` | 创建需求并挂入**需求文档（PRD）**（进 `requirement.md` 全文注入，见 §1.4） |
 | `./specc.sh new <需求ID> ["描述"] --kb <文件\|目录>...` | 创建需求并挂入**知识库**（进 `knowledge/`，索引+选读，见 §1.4） |
 | `./specc.sh status [需求ID]` | 查看阶段进度、门禁状态、任务进度、审计历史 |
-| `./specc.sh <stage> <需求ID>` | 执行六阶段之一 |
+| `./specc.sh <stage> <需求ID>` | 执行七阶段之一 |
 | `./specc.sh redo <stage> <需求ID>` | 重置某阶段及之后的门禁（保留之前阶段） |
 | `./specc.sh strip <需求ID> [--apply]` | 剥离可观测性注解/标签（交付前清理，默认仅预览） |
 | `./specc.sh approve <需求ID> [意见]` | 异步审批：通过待审阶段 |
@@ -98,12 +98,13 @@ hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言�
 
 ---
 
-## 3. 六阶段流程
+## 3. 七阶段流程
 
-六阶段严格线性，禁止跳阶段（前置阶段未通过，后续阶段拒绝执行）。
+七阶段严格线性，禁止跳阶段（前置阶段未通过，后续阶段拒绝执行）。
 
 | 阶段 | 产物（写入 `features/<需求ID>/`） | 自动门禁 | 人工检查点 |
 |---|---|---|---|
+| probe | `probe-questions.md`（探询问题清单）；用户回答写 `probe-answers.md` | ✅ 问题清单已生成 | ✅ 需人工审（裁决"是否问清了"） |
 | specify | `spec.md` + 业务层知识三件套 `business.md`/`data-model.md`/`flows.md` | ✅ spec 结构 + 三件套齐备 | ✅ 需人工审 |
 | clarify | `clarify.md` + 回填 `spec.md` | ✅ 无 `[NEEDS CLARIFICATION]` 残留 | 自动通过 |
 | plan | `plan.md` + `contracts/*.yaml` | ✅ 契约四要素齐备 | ✅ 需人工审 |
@@ -115,6 +116,7 @@ hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言�
 
 每阶段产物落盘后，先跑自动门禁，失败即终止并报出**具体缺什么**：
 
+- **probe**：`probe-questions.md` 缺失或为空 → 报「探询阶段未产出问题清单」。是否"问清了"由人工裁决，门禁只保证清单存在
 - **specify**：`spec.md` 缺 `Req-N` 条目、缺「不做什么」章节、缺「量化约束」章节、三件套任一缺失/为空 → 任一不满足即失败
 - **clarify**：`spec.md` 仍残留 `[NEEDS CLARIFICATION]` → 列出未消除的行
 - **plan**：契约缺四要素（`error-code-table` / `auth:` / `pageNum` / 统一响应体）→ 逐个文件报缺哪项
@@ -123,7 +125,7 @@ hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言�
 
 ### 3.2 人工检查点（✋ 后置）
 
-需要人工审查的阶段只有三个：**specify / plan / verify**。有两种模式：
+需要人工审查的阶段有四个：**probe / specify / plan / verify**。有两种模式：
 
 **交互模式**（你在终端直接跑，stdin 是 TTY）：CLI 暂停，提示输入 `approve` / `reject`。
 
@@ -159,14 +161,14 @@ model:                      # 切模型只改这里，lib/engines.sh 自动生�
     id: deepseek-v4-flash-vision-exp
 
 pipeline:
-  profile: full             # full 六阶段全走（light/change 为 v0.2 规划）
+  profile: full             # full 七阶段全走（light/change 为 v0.2 规划）
   context_warn_chars: 60000 # 上下文体积告警阈值
 
 tasks:
   max_retry: 1              # 单任务失败自动重试次数
 
 knowledge:                  # 知识库（corpus）选读配置
-  enabled: true             # 是否启用知识库机制（false 时 specify 忽略 knowledge/）
+  enabled: true             # 是否启用知识库机制（false 时 probe/specify 忽略 knowledge/）
   selection: manual         # manual=模型先出候选清单，你编辑确认后再读；auto=直接按清单读
   max_files: 8              # 单次最多选读文件数（防上下文超限）
 ```
@@ -230,7 +232,7 @@ hh-specc/
 ```
 [通过] 需求工作目录已创建：.../features/daily-quote
 [通过] 需求描述已记录：.../features/daily-quote/requirement.md
-[信息] 开始第一阶段：./specc.sh specify daily-quote
+[信息] 开始第一阶段（需求探询）：./specc.sh probe daily-quote
 ```
 
 产物：`features/daily-quote/`（含 `contracts/` 子目录、`state.json`、`requirement.md`）。
@@ -244,9 +246,38 @@ hh-specc/
   --kb ~/Documents/AI-Guide/AI/Agent知识 --kb ~/Documents/AI-Guide/简历优化
 ```
 
-挂入知识库后，specify 时系统会先给模型知识库**索引**（标题行摘要），模型写出候选清单 `knowledge/selection.md` 供你确认，确认后重跑 specify 才注入选中文件全文（详见 §1.4「知识库选读机制」）。
+挂入知识库后，probe/specify 时系统会先给模型知识库**索引**（标题行摘要），模型写出候选清单 `knowledge/selection.md` 供你确认，确认后重跑相应阶段才注入选中文件全文（详见 §1.4「知识库选读机制」）。
 
-### 7.2 specify（需求规格化）
+### 7.2 probe（需求探询——用户说清"能说的"）
+
+```bash
+./specc.sh probe daily-quote
+```
+
+引擎（Codex）读取宪法 + 需求描述（探询起点）+ **需求要素清单模板**（`probe-checklist.template.md`，九维）+ probe 指令，产出：
+
+- `probe-questions.md`：本轮**问题清单**，只列【必填】【协作】维度的问题
+- `probe-answers.md`：**完整九维需求沉淀**——【必填】=用户回答，【协作】=用户直觉+模型精确化，【方案】=模型出的草案（经用户确认或改）
+
+九维按人机分工分三档（模板为唯一源，见 `.specc/templates/probe-checklist.template.md`）：
+
+| 档位 | 维度 | 谁来做 |
+|---|---|---|
+| 【必填】 | 产品定位 / 端与角色 / 明确不做 | **必须用户给**（用户独有的商业事实） |
+| 【协作】 | 领域术语 / 量化约束 | 用户给直觉，模型精确化 |
+| 【方案】 | 核心流程 / 数据对象 / 边界规则 / 假设与依赖 | **模型出草案**，用户确认或改 |
+
+你在 `probe-answers.md` 里逐条回答（每问一行），然后把答案写入后重跑或在人工检查点确认：
+
+```bash
+# 编辑 features/daily-quote/probe-answers.md，逐条回答
+./specc.sh probe daily-quote   # 多轮：模型基于你的回答收敛或追问
+./specc.sh approve daily-quote  # 你认为"问清了、无阻塞歧义"→ 进 specify
+```
+
+> probe 的意义：把「用户第一句含糊描述」补全成可支撑规格的完整需求，specify 才不生成错误地基上的草稿。**必填项只有用户能定，非必填项由模型出方案、用户确认**——用户只给「是什么」，方案细节交给模型推导。由你（而非模型）裁决「是否问清了」，这是"人裁决终止"的关键。
+
+### 7.3 specify（需求规格化）
 
 ```bash
 ./specc.sh specify daily-quote
@@ -274,7 +305,7 @@ hh-specc/
 # [信息] 下一阶段：clarify（./specc.sh clarify daily-quote）
 ```
 
-### 7.3 clarify（澄清问答）
+### 7.4 clarify（澄清问答——信息完整后补盲/评审）
 
 ```bash
 ./specc.sh clarify daily-quote
@@ -282,7 +313,7 @@ hh-specc/
 
 引擎针对 spec 中模糊点生成问答，回填 `spec.md` 并清零 `[NEEDS CLARIFICATION]`。自动门禁校验无残留后自动通过（无人工检查点）。
 
-### 7.4 plan（技术方案 + 契约）
+### 7.5 plan（技术方案 + 契约）
 
 ```bash
 ./specc.sh plan daily-quote
@@ -296,7 +327,7 @@ hh-specc/
 ./specc.sh approve daily-quote
 ```
 
-### 7.5 tasks（任务拆解）
+### 7.6 tasks（任务拆解）
 
 ```bash
 ./specc.sh tasks daily-quote
@@ -304,7 +335,7 @@ hh-specc/
 
 生成 `tasks.md`：原子任务清单，每任务带「端/工程」「回链」与「验证命令」。自动门禁校验每条 `Req-N` 都被任务回链覆盖后自动通过。
 
-### 7.6 implement（逐任务实现）
+### 7.7 implement（逐任务实现）
 
 ```bash
 ./specc.sh implement daily-quote
@@ -324,7 +355,7 @@ hh-specc/
 - 每任务测试先行 + 跑该任务验证命令；失败自动重试 1 次，仍失败则挂起
 - 不自动 commit（Git 形态 A：进版本库的动作保留给人）
 
-### 7.7 verify（验证与报告）
+### 7.8 verify（验证与报告）
 
 ```bash
 ./specc.sh verify daily-quote
@@ -340,7 +371,7 @@ hh-specc/
 
 ```bash
 ./specc.sh approve daily-quote
-# [通过] 六阶段全部完成！需求【daily-quote】已端到端实现完毕
+# [通过] 七阶段全部完成！需求【daily-quote】已端到端实现完毕
 ```
 
 ---

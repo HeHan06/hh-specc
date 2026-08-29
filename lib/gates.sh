@@ -12,6 +12,18 @@
 
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
+# ---- 自动门禁：probe 阶段 —— 探询问题清单已生成 ----
+# 规则：probe-questions.md 必须存在且非空（代表已有一次有效的需求探询）。
+# 说明：probe 的「是否问清了」由人工裁决（gate_human_review），门禁只校验清单确实产出，
+#       避免「探询阶段跑了却什么都没问」的情况。
+gate_check_probe() {
+  local fdir="$1"
+  local qfile="$fdir/probe-questions.md"
+  [[ -s "$qfile" ]] || { log_error "门禁失败：缺少探询问题清单 $qfile（probe 阶段必须产出问题清单）"; return 1; }
+  log_ok "结构检查：探询问题清单已生成"
+  return 0
+}
+
 # ---- 自动门禁：specify 阶段 —— 产物完整性 ----
 # 规则：spec.md 结构完整 + 业务层知识三件套（business/data-model/flows）齐备且非空。
 # 背景：业务层知识是 specify 的产出物（非全局资产），后续阶段注入；若引擎漏生成，
@@ -143,6 +155,7 @@ gate_check_verify() {
 gate_auto_run() {
   local stage="$1" fdir="$2"
   case "$stage" in
+    probe)   gate_check_probe "$fdir" ;;
     specify) gate_check_specify "$fdir" ;;
     clarify) gate_check_clarify "$fdir" ;;
     plan)    gate_check_plan "$fdir" ;;
@@ -163,7 +176,7 @@ gate_auto_run() {
 gate_human_review() {
   local stage="$1" fdir="$2"
   case "$stage" in
-    specify|plan|verify) ;;        # 这三个阶段需要人工审查
+    probe|specify|plan|verify) ;;  # 这四个阶段需要人工审查（probe：裁决"是否问清了"）
     *) return 0 ;;                 # 其余阶段自动通过
   esac
 
