@@ -1,0 +1,166 @@
+# 接口契约：内容（content）
+# 格式依据：.specc/platform/api-conventions.md 第 5 节
+# 效力：契约是前后端唯一真相源；implement 阶段禁止私改（宪法 4.3）
+# 门禁检查：四要素（统一响应体/错误码/认证/分页）缺一即失败
+# 通用错误码/统一响应体/分页唯一源见 contracts/common.yaml，此处不复制其内容
+
+module: 内容
+error-code-range: 2000-2099
+base-path: /api
+auth: JWT Bearer
+
+endpoints:
+  - method: GET
+    path: /topics
+    summary: 查询阅读站可见主题目录
+    auth: 公开（鉴权白名单）
+    audience: web-reader
+    request: {}
+    response:
+      # data 直接是数组（非 {list:[...]} 对象包装），元素字段如下：
+      data:
+        - { field: code, type: string, desc: 主题编码 }
+        - { field: name, type: string, desc: 主题名称 }
+        - { field: description, type: string, required: false, desc: 主题描述 }
+        - { field: sortOrder, type: int, desc: 排序权重 }
+    error-codes: [1004]
+
+  - method: GET
+    path: /categories
+    summary: 查询某主题下阅读站可见专题
+    auth: 公开（鉴权白名单）
+    audience: web-reader
+    request:
+      query:
+        - { field: topicCode, type: string, required: true, validate: "长度 1-64" }
+    response:
+      # data 直接是数组（非 {list:[...]} 对象包装），元素字段如下：
+      data:
+        - { field: code, type: string, desc: 专题编码 }
+        - { field: topicCode, type: string, desc: 所属主题编码 }
+        - { field: name, type: string, desc: 专题名称 }
+        - { field: description, type: string, required: false, desc: 专题描述 }
+        - { field: sortOrder, type: int, desc: 排序权重 }
+    error-codes: [1000, 1004, 2001]
+
+  - method: GET
+    path: /contents
+    summary: 分页查询某专题下已发布内容
+    auth: 公开（鉴权白名单）
+    audience: web-reader
+    request:
+      query:
+        - { field: categoryCode, type: string, required: true, validate: "长度 1-64" }
+        - { field: pageNum, type: int, default: 1, min: 1 }
+        - { field: pageSize, type: int, default: 20, max: 100 }
+    response:
+      data:
+        - { field: list, type: array, desc: 内容摘要；元素字段 code/categoryCode/type/title/summary/updatedAt }
+        - { field: total, type: int }
+        - { field: pageNum, type: int }
+        - { field: pageSize, type: int }
+    error-codes: [1000, 1004, 2002]
+
+  - method: GET
+    path: /contents/latest
+    summary: 分页查询最新已发布内容
+    auth: 公开（鉴权白名单）
+    audience: web-reader
+    request:
+      query:
+        - { field: pageNum, type: int, default: 1, min: 1 }
+        - { field: pageSize, type: int, default: 20, max: 100 }
+    response:
+      data:
+        - { field: list, type: array, desc: 按 publishedAt 倒序；元素字段 code/categoryCode/type/title/summary/updatedAt }
+        - { field: total, type: int }
+        - { field: pageNum, type: int }
+        - { field: pageSize, type: int }
+    error-codes: [1000, 1004]
+
+  - method: GET
+    path: /contents/recommended
+    summary: 分页查询推荐已发布内容
+    auth: 公开（鉴权白名单）
+    audience: web-reader
+    request:
+      query:
+        - { field: pageNum, type: int, default: 1, min: 1 }
+        - { field: pageSize, type: int, default: 20, max: 100 }
+    response:
+      data:
+        - { field: list, type: array, desc: recommended=true 且 published；元素字段 code/categoryCode/type/title/summary/updatedAt；按 publishedAt 倒序 }
+        - { field: total, type: int }
+        - { field: pageNum, type: int }
+        - { field: pageSize, type: int }
+    error-codes: [1000, 1004]
+
+  - method: GET
+    path: /contents/search
+    summary: 按标题、摘要、标签检索已发布内容
+    auth: 公开（鉴权白名单）
+    audience: web-reader
+    request:
+      query:
+        - { field: keyword, type: string, required: true, validate: "trim 后长度 1-50" }
+        - { field: pageNum, type: int, default: 1, min: 1 }
+        - { field: pageSize, type: int, default: 20, max: 100 }
+    response:
+      data:
+        - { field: list, type: array, desc: 命中已发布内容；元素字段 code/categoryCode/type/title/summary/updatedAt }
+        - { field: total, type: int }
+        - { field: pageNum, type: int }
+        - { field: pageSize, type: int }
+    error-codes: [1000, 1004, 2003]
+
+  - method: GET
+    path: /contents/{contentCode}
+    summary: 获取已发布内容详情并累计浏览数
+    auth: 公开（鉴权白名单）
+    audience: web-reader
+    request:
+      path:
+        - { field: contentCode, type: string, required: true, validate: "长度 1-64" }
+      headers:
+        - { field: X-Visitor-Id, type: string, required: false, validate: "长度 8-64；用于返回 liked 状态" }
+    response:
+      data:
+        - { field: code, type: string }
+        - { field: categoryCode, type: string }
+        - { field: topicCode, type: string }
+        - { field: type, type: string, desc: "article/interview/question/resume" }
+        - { field: title, type: string }
+        - { field: summary, type: string }
+        - { field: body, type: string, desc: "Markdown 正文，分节骨架见 content-template.md（Req-14）" }
+        - { field: tags, type: array }
+        - { field: source, type: string, desc: "original/migrated" }
+        - { field: likeCount, type: int }
+        - { field: viewCount, type: int }
+        - { field: liked, type: boolean, desc: 依据 X-Visitor-Id 计算；无头时 false }
+        - { field: publishedAt, type: string, desc: ISO-8601 UTC }
+        - { field: updatedAt, type: string, desc: ISO-8601 UTC }
+    error-codes: [1000, 1004, 2000]
+
+  - method: POST
+    path: /contents/{contentCode}/likes
+    summary: 对已发布内容点赞（幂等，重复仅忽略）
+    auth: 公开（鉴权白名单）
+    audience: web-reader
+    request:
+      path:
+        - { field: contentCode, type: string, required: true, validate: "长度 1-64" }
+      headers:
+        - { field: X-Visitor-Id, type: string, required: true, validate: "长度 8-64" }
+    response:
+      data:
+        - { field: liked, type: boolean, desc: 当前访客是否已点赞 }
+        - { field: likeCount, type: int, desc: 最新点赞总数 }
+    error-codes: [1000, 1004, 2000, 2004]
+
+# ---- 错误码表（四要素之一）----
+error-code-table:
+  - { code: 2000, meaning: 内容不存在或非已发布状态，阅读站不可见, user-text: 内容不存在或已下架 }
+  - { code: 2001, meaning: 主题不存在或已停用, user-text: 主题不存在或暂不可用 }
+  - { code: 2002, meaning: 专题不存在或已停用, user-text: 专题不存在或暂不可用 }
+  - { code: 2003, meaning: 搜索服务不可用或查询执行失败, user-text: 搜索暂不可用，请稍后重试 }
+  - { code: 2004, meaning: 点赞访客标识缺失或非法, user-text: 操作失败，请刷新页面后重试 }

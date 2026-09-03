@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiguide.content.mapper.CategoryMapper">
+    <resultMap id="CategoryViewMap" type="com.aiguide.content.dto.CategoryView">
+        <constructor>
+            <arg column="code" javaType="string"/>
+            <arg column="topic_code" javaType="string"/>
+            <arg column="name" javaType="string"/>
+            <arg column="description" javaType="string"/>
+            <arg column="sort_order" javaType="java.lang.Integer"/>
+        </constructor>
+    </resultMap>
+
+    <select id="selectVisibleCategories" resultMap="CategoryViewMap">
+        SELECT cat.code,
+               t.code AS topic_code,
+               cat.name,
+               cat.description,
+               cat.sort_order
+        FROM category cat
+        JOIN topic t ON t.id = cat.topic_id
+        WHERE cat.enabled = TRUE
+          AND t.enabled = TRUE
+          AND t.code = #{topicCode}
+        ORDER BY cat.sort_order ASC, cat.id ASC
+    </select>
+
+    <select id="isVisibleByCode" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM category cat
+            JOIN topic t ON t.id = cat.topic_id
+            WHERE cat.code = #{code}
+              AND cat.enabled = TRUE
+              AND t.enabled = TRUE
+        )
+    </select>
+
+    <resultMap id="AdminCategoryViewMap" type="com.aiguide.admin.dto.AdminViews$CategoryView">
+        <constructor>
+            <arg column="code" javaType="string"/>
+            <arg column="topic_code" javaType="string"/>
+            <arg column="name" javaType="string"/>
+            <arg column="description" javaType="string"/>
+            <arg column="sort_order" javaType="java.lang.Integer"/>
+            <arg column="enabled" javaType="_boolean"/>
+            <arg column="updated_at" javaType="string"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="AdminCategoryWhere">
+        <where>
+            <if test="topicCode != null and topicCode != ''">
+                AND t.code = #{topicCode}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (cat.code ILIKE CONCAT('%', #{keyword}, '%')
+                     OR cat.name ILIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="enabled != null">
+                AND cat.enabled = #{enabled}
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectAdminCategories" resultMap="AdminCategoryViewMap">
+        SELECT cat.code,
+               t.code AS topic_code,
+               cat.name,
+               cat.description,
+               cat.sort_order,
+               cat.enabled,
+               TO_CHAR(cat.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS updated_at
+        FROM category cat
+        JOIN topic t ON t.id = cat.topic_id
+        <include refid="AdminCategoryWhere"/>
+        ORDER BY cat.sort_order ASC, cat.id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countAdminCategories" resultType="long">
+        SELECT COUNT(*)
+        FROM category cat
+        JOIN topic t ON t.id = cat.topic_id
+        <include refid="AdminCategoryWhere"/>
+    </select>
+
+    <insert id="insertCategory">
+        INSERT INTO category (code, topic_id, name, description, sort_order, enabled)
+        VALUES (#{code},
+                (SELECT id FROM topic WHERE code = #{topicCode}),
+                #{name},
+                #{description,jdbcType=VARCHAR},
+                #{sortOrder},
+                #{enabled})
+    </insert>
+
+    <update id="updateCategory">
+        UPDATE category
+        SET topic_id = (SELECT id FROM topic WHERE code = #{topicCode}),
+            name = #{name},
+            description = #{description,jdbcType=VARCHAR},
+            sort_order = #{sortOrder},
+            enabled = #{enabled}
+        WHERE code = #{code}
+    </update>
+
+    <select id="existsByCode" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM category WHERE code = #{code})
+    </select>
+</mapper>

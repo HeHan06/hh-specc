@@ -1,0 +1,64 @@
+/* ============================================================
+ * web-reader 全局样式
+ * 视觉令牌落地自 landing-page 预设（营销落地页范式）：
+ *   .specc/platform/ui-presets/landing-page/README.md（视觉唯一权威源）
+ * 说明：本文件只落地该预设的色板/字号/间距/圆角/阴影令牌，
+ *       不另起炉灶新造视觉规范（宪法 7.6 / FRAMEWORK-DEV §1.2）。
+ * ============================================================ */
+
+:root {
+  /* —— 色板（landing-page 令牌）—— */
+  --color-bg: #ffffff;              /* 页面底色（纯白） */
+  --color-primary: #4f46e5;         /* 主 CTA / 链接 / 强调（靛蓝） */
+  --color-accent: #f59e0b;          /* 次级营销色（琥珀） */
+  --color-text: #111827;            /* 大标题 */
+  --color-text-secondary: #6b7280;  /* 正文 / 描述 */
+  --color-surface-muted: #f9fafb;   /* 区块交替背景 */
+  --color-border: #e5e7eb;          /* 分隔 / 描边 */
+
+  /* —— 圆角 & 阴影（landing-page 令牌）—— */
+  --radius-card: 16px;
+  --radius-btn: 8px;
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.08);
+
+  /* —— 间距（4 基数，宽松）—— */
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 48px;
+  --space-5: 96px;
+
+  /* —— 内容区最大宽度 —— */
+  --content-max: 1080px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}

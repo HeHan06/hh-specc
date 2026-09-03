@@ -1,0 +1,337 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiguide.content.mapper.ContentMapper">
+    <resultMap id="ContentSummaryViewMap" type="com.aiguide.content.dto.ContentSummaryView">
+        <constructor>
+            <arg column="code" javaType="string"/>
+            <arg column="category_code" javaType="string"/>
+            <arg column="type" javaType="string"/>
+            <arg column="title" javaType="string"/>
+            <arg column="summary" javaType="string"/>
+            <arg column="updated_at" javaType="string"/>
+        </constructor>
+    </resultMap>
+
+    <resultMap id="ContentDetailViewMap" type="com.aiguide.content.dto.ContentDetailView">
+        <constructor>
+            <arg column="code" javaType="string"/>
+            <arg column="category_code" javaType="string"/>
+            <arg column="topic_code" javaType="string"/>
+            <arg column="type" javaType="string"/>
+            <arg column="title" javaType="string"/>
+            <arg column="summary" javaType="string"/>
+            <arg column="body" javaType="string"/>
+            <arg column="tags" javaType="java.util.List" typeHandler="com.aiguide.common.typehandler.StringArrayTypeHandler"/>
+            <arg column="source" javaType="string"/>
+            <arg column="like_count" javaType="_int"/>
+            <arg column="view_count" javaType="_long"/>
+            <arg column="liked" javaType="_boolean"/>
+            <arg column="published_at" javaType="string"/>
+            <arg column="updated_at" javaType="string"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="PublishedContentSummaryColumns">
+        SELECT c.code,
+               cat.code AS category_code,
+               c.type,
+               c.title,
+               c.summary,
+               TO_CHAR(c.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS updated_at
+    </sql>
+
+    <select id="selectPublishedByCategory" resultMap="ContentSummaryViewMap">
+        <include refid="PublishedContentSummaryColumns"/>
+        FROM content c
+        JOIN category cat ON cat.id = c.category_id
+        JOIN topic t ON t.id = cat.topic_id
+        WHERE c.status = 'published'
+          AND cat.code = #{categoryCode}
+          AND cat.enabled = TRUE
+          AND t.enabled = TRUE
+        ORDER BY c.published_at DESC, c.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countPublishedByCategory" resultType="long">
+        SELECT COUNT(*)
+        FROM content c
+        JOIN category cat ON cat.id = c.category_id
+        JOIN topic t ON t.id = cat.topic_id
+        WHERE c.status = 'published'
+          AND cat.code = #{categoryCode}
+          AND cat.enabled = TRUE
+          AND t.enabled = TRUE
+    </select>
+
+    <select id="selectLatestPublished" resultMap="ContentSummaryViewMap">
+        <include refid="PublishedContentSummaryColumns"/>
+        FROM content c
+        JOIN category cat ON cat.id = c.category_id
+        WHERE c.status = 'published'
+        ORDER BY c.published_at DESC, c.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countLatestPublished" resultType="long">
+        SELECT COUNT(*)
+        FROM content c
+        WHERE c.status = 'published'
+    </select>
+
+    <select id="selectRecommendedPublished" resultMap="ContentSummaryViewMap">
+        <include refid="PublishedContentSummaryColumns"/>
+        FROM content c
+        JOIN category cat ON cat.id = c.category_id
+        WHERE c.status = 'published'
+          AND c.recommended = TRUE
+        ORDER BY c.published_at DESC, c.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countRecommendedPublished" resultType="long">
+        SELECT COUNT(*)
+        FROM content c
+        WHERE c.status = 'published'
+          AND c.recommended = TRUE
+    </select>
+
+    <select id="searchPublished" resultMap="ContentSummaryViewMap">
+        <include refid="PublishedContentSummaryColumns"/>
+        FROM content c
+        JOIN category cat ON cat.id = c.category_id
+        WHERE c.status = 'published'
+          AND (
+                c.title ILIKE CONCAT('%', #{keyword}, '%')
+             OR c.summary ILIKE CONCAT('%', #{keyword}, '%')
+             OR EXISTS (
+                    SELECT 1
+                    FROM unnest(c.tags) AS tag
+                    WHERE tag ILIKE CONCAT('%', #{keyword}, '%')
+                )
+          )
+        ORDER BY c.published_at DESC, c.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countSearchPublished" resultType="long">
+        SELECT COUNT(*)
+        FROM content c
+        WHERE c.status = 'published'
+          AND (
+                c.title ILIKE CONCAT('%', #{keyword}, '%')
+             OR c.summary ILIKE CONCAT('%', #{keyword}, '%')
+             OR EXISTS (
+                    SELECT 1
+                    FROM unnest(c.tags) AS tag
+                    WHERE tag ILIKE CONCAT('%', #{keyword}, '%')
+                )
+          )
+    </select>
+
+    <select id="selectPublishedDetail" resultMap="ContentDetailViewMap">
+        SELECT c.code,
+               cat.code AS category_code,
+               t.code AS topic_code,
+               c.type,
+               c.title,
+               c.summary,
+               c.body,
+               c.tags,
+               c.source,
+               c.like_count,
+               c.view_count,
+               FALSE AS liked,
+               TO_CHAR(c.published_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS published_at,
+               TO_CHAR(c.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS updated_at
+        FROM content c
+        JOIN category cat ON cat.id = c.category_id
+        JOIN topic t ON t.id = cat.topic_id
+        WHERE c.code = #{contentCode}
+          AND c.status = 'published'
+          AND cat.enabled = TRUE
+          AND t.enabled = TRUE
+    </select>
+
+    <select id="selectPublishedDetailWithVisitor" resultMap="ContentDetailViewMap">
+        SELECT c.code,
+               cat.code AS category_code,
+               t.code AS topic_code,
+               c.type,
+               c.title,
+               c.summary,
+               c.body,
+               c.tags,
+               c.source,
+               c.like_count,
+               c.view_count,
+               EXISTS (
+                   SELECT 1
+                   FROM content_like cl
+                   WHERE cl.content_id = c.id
+                     AND cl.visitor_id = #{visitorId}
+               ) AS liked,
+               TO_CHAR(c.published_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS published_at,
+               TO_CHAR(c.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS updated_at
+        FROM content c
+        JOIN category cat ON cat.id = c.category_id
+        JOIN topic t ON t.id = cat.topic_id
+        WHERE c.code = #{contentCode}
+          AND c.status = 'published'
+          AND cat.enabled = TRUE
+          AND t.enabled = TRUE
+    </select>
+
+    <update id="incrementViewCount">
+        UPDATE content
+        SET view_count = view_count + 1
+        WHERE code = #{contentCode}
+          AND status = 'published'
+    </update>
+
+    <resultMap id="AdminContentListViewMap" type="com.aiguide.admin.dto.AdminViews$ContentListView">
+        <constructor>
+            <arg column="code" javaType="string"/>
+            <arg column="category_code" javaType="string"/>
+            <arg column="type" javaType="string"/>
+            <arg column="title" javaType="string"/>
+            <arg column="status" javaType="string"/>
+            <arg column="version" javaType="java.lang.Integer"/>
+            <arg column="updated_at" javaType="string"/>
+        </constructor>
+    </resultMap>
+
+    <resultMap id="AdminContentDetailViewMap" type="com.aiguide.admin.dto.AdminViews$ContentDetailView">
+        <constructor>
+            <arg column="code" javaType="string"/>
+            <arg column="category_code" javaType="string"/>
+            <arg column="type" javaType="string"/>
+            <arg column="title" javaType="string"/>
+            <arg column="summary" javaType="string"/>
+            <arg column="body" javaType="string"/>
+            <arg column="tags" javaType="java.util.List" typeHandler="com.aiguide.common.typehandler.StringArrayTypeHandler"/>
+            <arg column="source" javaType="string"/>
+            <arg column="status" javaType="string"/>
+            <arg column="recommended" javaType="_boolean"/>
+            <arg column="version" javaType="java.lang.Integer"/>
+            <arg column="published_at" javaType="string"/>
+            <arg column="updated_at" javaType="string"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="AdminContentWhere">
+        <where>
+            <if test="status != null and status != ''">
+                AND c.status = #{status}
+            </if>
+            <if test="type != null and type != ''">
+                AND c.type = #{type}
+            </if>
+            <if test="categoryCode != null and categoryCode != ''">
+                AND cat.code = #{categoryCode}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (c.title ILIKE CONCAT('%', #{keyword}, '%')
+                     OR c.code ILIKE CONCAT('%', #{keyword}, '%')
+                     OR c.summary ILIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectAdminContents" resultMap="AdminContentListViewMap">
+        SELECT c.code,
+               cat.code AS category_code,
+               c.type,
+               c.title,
+               c.status,
+               c.version,
+               TO_CHAR(c.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS updated_at
+        FROM content c
+        JOIN category cat ON cat.id = c.category_id
+        <include refid="AdminContentWhere"/>
+        ORDER BY c.updated_at DESC, c.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countAdminContents" resultType="long">
+        SELECT COUNT(*)
+        FROM content c
+        JOIN category cat ON cat.id = c.category_id
+        <include refid="AdminContentWhere"/>
+    </select>
+
+    <select id="selectAdminDetailByCode" resultMap="AdminContentDetailViewMap">
+        SELECT c.code,
+               cat.code AS category_code,
+               c.type,
+               c.title,
+               c.summary,
+               c.body,
+               c.tags,
+               c.source,
+               c.status,
+               c.recommended,
+               c.version,
+               TO_CHAR(c.published_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS published_at,
+               TO_CHAR(c.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS updated_at
+        FROM content c
+        JOIN category cat ON cat.id = c.category_id
+        WHERE c.code = #{contentCode}
+    </select>
+
+    <select id="selectVersionByCode" resultType="int">
+        SELECT version
+        FROM content
+        WHERE code = #{contentCode}
+    </select>
+
+    <select id="selectStatusByCode" resultType="string">
+        SELECT status
+        FROM content
+        WHERE code = #{contentCode}
+    </select>
+
+    <insert id="insertContent">
+        INSERT INTO content (code, category_id, type, title, summary, body, tags, source, status, version)
+        VALUES (#{code},
+                (SELECT id FROM category WHERE code = #{categoryCode}),
+                #{type},
+                #{title},
+                #{summary},
+                #{body},
+                #{tags,jdbcType=ARRAY,typeHandler=com.aiguide.common.typehandler.StringArrayTypeHandler},
+                #{source},
+                'draft',
+                0)
+    </insert>
+
+    <update id="updateContent">
+        UPDATE content
+        SET category_id = (SELECT id FROM category WHERE code = #{categoryCode}),
+            type = #{type},
+            title = #{title},
+            summary = #{summary},
+            body = #{body},
+            tags = #{tags,jdbcType=ARRAY,typeHandler=com.aiguide.common.typehandler.StringArrayTypeHandler},
+            source = #{source},
+            recommended = #{recommended},
+            version = version + 1
+        WHERE code = #{contentCode}
+          AND version = #{version}
+    </update>
+
+    <update id="transitionContentStatus">
+        UPDATE content
+        SET status = #{toStatus},
+            version = version + 1,
+            published_at = CASE
+                WHEN #{toStatus} = 'published' THEN CURRENT_TIMESTAMP
+                ELSE published_at
+            END
+        WHERE code = #{contentCode}
+          AND status = #{fromStatus}
+          AND version = #{version}
+    </update>
+</mapper>

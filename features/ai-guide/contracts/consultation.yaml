@@ -1,0 +1,57 @@
+# 接口契约：付费咨询订单（consultation）
+# 格式依据：.specc/platform/api-conventions.md 第 5 节
+# 效力：契约是前后端唯一真相源；implement 阶段禁止私改（宪法 4.3）
+# 门禁检查：四要素（统一响应体/错误码/认证/分页）缺一即失败
+# 通用错误码/统一响应体/分页唯一源见 contracts/common.yaml，此处不复制其内容
+# 分页约定（pageNum/pageSize/orderBy）唯一源见 contracts/common.yaml；本模块无列表接口
+
+module: 付费咨询
+error-code-range: 2200-2299
+base-path: /api/consultations
+auth: JWT Bearer
+
+endpoints:
+  - method: POST
+    path: /
+    summary: 创建付费咨询订单（加管理员微信线下收款，500 元/半小时，前 10 个确认订单免费）
+    auth: 公开（鉴权白名单）
+    audience: web-reader
+    request:
+      body:
+        - { field: contactName, type: string, required: true, validate: "trim 后长度 1-50" }
+        - { field: contactType, type: string, required: true, validate: "phone/wechat" }
+        - { field: contactValue, type: string, required: true, validate: "手机号或微信号格式；长度 1-100" }
+        - { field: topicText, type: string, required: true, validate: "trim 后长度 1-200" }
+        - { field: requestText, type: string, required: true, validate: "trim 后长度 1-2000" }
+        - { field: expectedTime, type: string, required: true, validate: "ISO-8601；须晚于当前时间" }
+    response:
+      data:
+        - { field: orderNo, type: string }
+        - { field: priceCents, type: int, desc: "50000；最终是否免费由管理员确认排期时判定" }
+        - { field: status, type: string, desc: "submitted" }
+        - { field: wechatId, type: string, desc: "管理员微信号，供访客加微信完成支付" }
+    error-codes: [1000, 1004, 2200]
+
+  - method: GET
+    path: /{orderNo}
+    summary: 查询付费咨询订单状态与管理员微信号
+    auth: 公开（鉴权白名单；orderNo 为不可猜测随机值）
+    audience: web-reader
+    request:
+      path:
+        - { field: orderNo, type: string, required: true, validate: "长度 1-40" }
+    response:
+      data:
+        - { field: orderNo, type: string }
+        - { field: priceCents, type: int }
+        - { field: freeQuotaUsed, type: boolean }
+        - { field: status, type: string, desc: "submitted/confirmed/completed/canceled" }
+        - { field: wechatId, type: string }
+        - { field: confirmedAt, type: string, desc: "ISO-8601 UTC；未确认为 null" }
+    error-codes: [1000, 1004, 2201]
+
+# ---- 错误码表（四要素之一）----
+error-code-table:
+  - { code: 2200, meaning: 咨询表单必填项缺失或联系方式/期望时间格式非法, user-text: 请检查咨询信息后重新提交 }
+  - { code: 2201, meaning: 咨询订单不存在, user-text: 订单不存在或已失效 }
+  - { code: 2203, meaning: 咨询订单状态不允许当前操作, user-text: 当前订单状态不支持该操作 }

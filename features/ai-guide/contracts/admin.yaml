@@ -1,0 +1,523 @@
+# 接口契约：管理后台（admin）
+# 格式依据：.specc/platform/api-conventions.md 第 5 节
+# 效力：契约是前后端唯一真相源；implement 阶段禁止私改（宪法 4.3）
+# 门禁检查：四要素（统一响应体/错误码/认证/分页）缺一即失败
+# 通用错误码/统一响应体/分页唯一源见 contracts/common.yaml，此处不复制其内容
+
+module: 管理后台
+error-code-range: 2300-2399
+base-path: /api/admin
+auth: JWT Bearer
+
+endpoints:
+  - method: POST
+    path: /auth/login
+    summary: 管理员登录
+    auth: 公开（鉴权白名单）
+    audience: web-admin
+    request:
+      body:
+        - { field: username, type: string, required: true, validate: "trim 后长度 1-64" }
+        - { field: password, type: string, required: true, validate: "长度 1-100" }
+    response:
+      data:
+        - { field: token, type: string, desc: JWT Bearer Token }
+        - { field: username, type: string }
+        - { field: role, type: string, desc: "ADMIN" }
+    error-codes: [1000, 2300, 2307]
+
+  - method: GET
+    path: /me
+    summary: 获取当前管理员信息
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request: {}
+    response:
+      data:
+        - { field: username, type: string }
+        - { field: role, type: string, desc: "ADMIN" }
+    error-codes: [1001, 1002]
+
+  - method: GET
+    path: /topics
+    summary: 分页查询主题
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      query:
+        - { field: pageNum, type: int, default: 1, min: 1 }
+        - { field: pageSize, type: int, default: 20, max: 100 }
+        - { field: keyword, type: string, required: false, validate: "长度 0-100" }
+        - { field: enabled, type: boolean, required: false }
+    response:
+      data:
+        - { field: list, type: array, desc: 元素字段 code/name/description/sortOrder/enabled/updatedAt }
+        - { field: total, type: int }
+        - { field: pageNum, type: int }
+        - { field: pageSize, type: int }
+    error-codes: [1000, 1001, 1002, 1004]
+
+  - method: POST
+    path: /topics
+    summary: 创建主题
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      body:
+        - { field: code, type: string, required: true, validate: "长度 1-64；唯一" }
+        - { field: name, type: string, required: true, validate: "trim 后长度 1-100" }
+        - { field: description, type: string, required: false, validate: "长度 0-500" }
+        - { field: sortOrder, type: int, required: false, default: 0 }
+        - { field: enabled, type: boolean, required: false, default: true }
+    response:
+      data:
+        - { field: code, type: string }
+        - { field: name, type: string }
+    error-codes: [1000, 1001, 1002, 1004, 2301]
+
+  - method: PUT
+    path: /topics/{topicCode}
+    summary: 更新主题
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      path:
+        - { field: topicCode, type: string, required: true, validate: "长度 1-64" }
+      body:
+        - { field: name, type: string, required: true, validate: "trim 后长度 1-100" }
+        - { field: description, type: string, required: false }
+        - { field: sortOrder, type: int, required: false }
+        - { field: enabled, type: boolean, required: true }
+    response:
+      data:
+        - { field: code, type: string }
+    error-codes: [1000, 1001, 1002, 1004, 2301]
+
+  - method: GET
+    path: /categories
+    summary: 分页查询专题
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      query:
+        - { field: topicCode, type: string, required: false, validate: "长度 1-64" }
+        - { field: pageNum, type: int, default: 1, min: 1 }
+        - { field: pageSize, type: int, default: 20, max: 100 }
+        - { field: keyword, type: string, required: false }
+        - { field: enabled, type: boolean, required: false }
+    response:
+      data:
+        - { field: list, type: array, desc: 元素字段 code/topicCode/name/description/sortOrder/enabled/updatedAt }
+        - { field: total, type: int }
+        - { field: pageNum, type: int }
+        - { field: pageSize, type: int }
+    error-codes: [1000, 1001, 1002, 1004]
+
+  - method: POST
+    path: /categories
+    summary: 创建专题
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      body:
+        - { field: code, type: string, required: true, validate: "长度 1-64；唯一" }
+        - { field: topicCode, type: string, required: true, validate: "长度 1-64；主题须存在" }
+        - { field: name, type: string, required: true, validate: "trim 后长度 1-100" }
+        - { field: description, type: string, required: false }
+        - { field: sortOrder, type: int, required: false, default: 0 }
+        - { field: enabled, type: boolean, required: false, default: true }
+    response:
+      data:
+        - { field: code, type: string }
+        - { field: topicCode, type: string }
+    error-codes: [1000, 1001, 1002, 1004, 2301]
+
+  - method: PUT
+    path: /categories/{categoryCode}
+    summary: 更新专题
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      path:
+        - { field: categoryCode, type: string, required: true, validate: "长度 1-64" }
+      body:
+        - { field: topicCode, type: string, required: true, validate: "长度 1-64" }
+        - { field: name, type: string, required: true, validate: "trim 后长度 1-100" }
+        - { field: description, type: string, required: false }
+        - { field: sortOrder, type: int, required: false }
+        - { field: enabled, type: boolean, required: true }
+    response:
+      data:
+        - { field: code, type: string }
+    error-codes: [1000, 1001, 1002, 1004, 2301]
+
+  - method: GET
+    path: /contents
+    summary: 分页查询内容（含草稿/已下架/已归档）
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      query:
+        - { field: pageNum, type: int, default: 1, min: 1 }
+        - { field: pageSize, type: int, default: 20, max: 100 }
+        - { field: status, type: string, required: false, validate: "draft/published/unpublished/archived" }
+        - { field: type, type: string, required: false, validate: "article/interview/question/resume" }
+        - { field: categoryCode, type: string, required: false, validate: "长度 1-64" }
+        - { field: keyword, type: string, required: false, validate: "长度 0-100" }
+    response:
+      data:
+        - { field: list, type: array, desc: 元素字段 code/categoryCode/type/title/status/version/updatedAt }
+        - { field: total, type: int }
+        - { field: pageNum, type: int }
+        - { field: pageSize, type: int }
+    error-codes: [1000, 1001, 1002, 1004]
+
+  - method: POST
+    path: /contents
+    summary: 创建内容草稿
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      body:
+        - { field: categoryCode, type: string, required: true, validate: "长度 1-64；专题须存在" }
+        - { field: type, type: string, required: true, validate: "article/interview/question/resume" }
+        - { field: title, type: string, required: true, validate: "trim 后长度 1-200" }
+        - { field: summary, type: string, required: true, validate: "trim 后长度 1-500" }
+        - { field: body, type: string, required: true, validate: "非空", desc: "Markdown 正文，分节骨架见 content-template.md" }
+        - { field: tags, type: array, required: false, default: [] }
+        - { field: source, type: string, required: true, validate: "original/migrated" }
+    response:
+      data:
+        - { field: code, type: string }
+        - { field: status, type: string, desc: "draft" }
+    error-codes: [1000, 1001, 1002, 1004, 2305]
+
+  - method: GET
+    path: /contents/{contentCode}
+    summary: 获取内容管理详情
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      path:
+        - { field: contentCode, type: string, required: true, validate: "长度 1-64" }
+    response:
+      data:
+        - { field: code, type: string }
+        - { field: categoryCode, type: string }
+        - { field: type, type: string }
+        - { field: title, type: string }
+        - { field: summary, type: string }
+        - { field: body, type: string, desc: "Markdown 正文，分节骨架见 content-template.md" }
+        - { field: tags, type: array }
+        - { field: source, type: string }
+        - { field: status, type: string }
+        - { field: recommended, type: boolean }
+        - { field: version, type: int }
+        - { field: publishedAt, type: string }
+        - { field: updatedAt, type: string }
+    error-codes: [1000, 1001, 1002, 1004, 2305]
+
+  - method: PUT
+    path: /contents/{contentCode}
+    summary: 编辑内容（乐观锁，version 必须匹配）
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      path:
+        - { field: contentCode, type: string, required: true, validate: "长度 1-64" }
+      body:
+        - { field: categoryCode, type: string, required: true }
+        - { field: type, type: string, required: true, validate: "article/interview/question/resume" }
+        - { field: title, type: string, required: true, validate: "trim 后长度 1-200" }
+        - { field: summary, type: string, required: true }
+        - { field: body, type: string, required: true, desc: "Markdown 正文，分节骨架见 content-template.md" }
+        - { field: tags, type: array, required: false }
+        - { field: source, type: string, required: true, validate: "original/migrated" }
+        - { field: recommended, type: boolean, required: false }
+        - { field: version, type: int, required: true, validate: "必须等于服务端当前版本" }
+    response:
+      data:
+        - { field: code, type: string }
+        - { field: version, type: int, desc: "更新后的版本" }
+    error-codes: [1000, 1001, 1002, 1004, 2302, 2305]
+
+  - method: POST
+    path: /contents/{contentCode}/publish
+    summary: 发布内容（发布前必须完成人工审核确认）
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      path:
+        - { field: contentCode, type: string, required: true, validate: "长度 1-64" }
+      body:
+        - { field: reviewConfirmed, type: boolean, required: true, validate: "必须为 true；false 时拒绝发布" }
+        - { field: version, type: int, required: true, validate: "必须等于服务端当前版本" }
+    response:
+      data:
+        - { field: code, type: string }
+        - { field: status, type: string, desc: "published" }
+        - { field: publishedAt, type: string, desc: ISO-8601 UTC }
+    error-codes: [1000, 1001, 1002, 1004, 2302, 2303]
+
+  - method: POST
+    path: /contents/{contentCode}/unpublish
+    summary: 下架内容（进入独立已下架状态）
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      path:
+        - { field: contentCode, type: string, required: true, validate: "长度 1-64" }
+      body:
+        - { field: version, type: int, required: true }
+    response:
+      data:
+        - { field: code, type: string }
+        - { field: status, type: string, desc: "unpublished" }
+    error-codes: [1000, 1001, 1002, 1004, 2302, 2303]
+
+  - method: POST
+    path: /contents/{contentCode}/restore
+    summary: 恢复已下架内容为已发布
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      path:
+        - { field: contentCode, type: string, required: true, validate: "长度 1-64" }
+      body:
+        - { field: reviewConfirmed, type: boolean, required: true, validate: "必须为 true" }
+        - { field: version, type: int, required: true }
+    response:
+      data:
+        - { field: code, type: string }
+        - { field: status, type: string, desc: "published" }
+    error-codes: [1000, 1001, 1002, 1004, 2302, 2303]
+
+  - method: POST
+    path: /contents/{contentCode}/archive
+    summary: 归档内容（终态，不物理删除）
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      path:
+        - { field: contentCode, type: string, required: true, validate: "长度 1-64" }
+      body:
+        - { field: version, type: int, required: true }
+    response:
+      data:
+        - { field: code, type: string }
+        - { field: status, type: string, desc: "archived" }
+    error-codes: [1000, 1001, 1002, 1004, 2302, 2303]
+
+  - method: GET
+    path: /tips
+    summary: 分页查询打赏订单
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      query:
+        - { field: pageNum, type: int, default: 1, min: 1 }
+        - { field: pageSize, type: int, default: 20, max: 100 }
+        - { field: status, type: string, required: false, validate: "submitted/received/closed" }
+        - { field: keyword, type: string, required: false, validate: "订单号/联系方式模糊匹配" }
+    response:
+      data:
+        - { field: list, type: array, desc: 元素字段 orderNo/contentCode/amountCents/status/contactValue/createdAt }
+        - { field: total, type: int }
+        - { field: pageNum, type: int }
+        - { field: pageSize, type: int }
+    error-codes: [1000, 1001, 1002, 1004]
+
+  - method: GET
+    path: /tips/{orderNo}
+    summary: 获取打赏订单详情
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      path:
+        - { field: orderNo, type: string, required: true, validate: "长度 1-40" }
+    response:
+      data:
+        - { field: orderNo, type: string }
+        - { field: contentCode, type: string }
+        - { field: amountCents, type: int }
+        - { field: contactName, type: string }
+        - { field: contactValue, type: string }
+        - { field: message, type: string }
+        - { field: status, type: string, desc: "submitted/received/closed" }
+        - { field: receivedAt, type: string }
+        - { field: closedAt, type: string }
+        - { field: createdAt, type: string }
+    error-codes: [1000, 1001, 1002, 1004]
+
+  - method: POST
+    path: /tips/{orderNo}/receive
+    summary: 确认打赏已线下收款（敏感操作，留日志）
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      path:
+        - { field: orderNo, type: string, required: true, validate: "长度 1-40" }
+    response:
+      data:
+        - { field: orderNo, type: string }
+        - { field: status, type: string, desc: "received" }
+        - { field: receivedAt, type: string, desc: "ISO-8601 UTC" }
+    error-codes: [1000, 1001, 1002, 1004, 2304]
+
+  - method: POST
+    path: /tips/{orderNo}/close
+    summary: 关闭打赏留资单（敏感操作，留日志）
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      path:
+        - { field: orderNo, type: string, required: true, validate: "长度 1-40" }
+    response:
+      data:
+        - { field: orderNo, type: string }
+        - { field: status, type: string, desc: "closed" }
+        - { field: closedAt, type: string, desc: "ISO-8601 UTC" }
+    error-codes: [1000, 1001, 1002, 1004, 2304]
+
+  - method: GET
+    path: /consultations
+    summary: 分页查询咨询订单
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      query:
+        - { field: pageNum, type: int, default: 1, min: 1 }
+        - { field: pageSize, type: int, default: 20, max: 100 }
+        - { field: status, type: string, required: false, validate: "submitted/confirmed/completed/canceled" }
+        - { field: keyword, type: string, required: false }
+    response:
+      data:
+        - { field: list, type: array, desc: 元素字段 orderNo/contactName/contactValue/topicText/priceCents/status/createdAt }
+        - { field: total, type: int }
+        - { field: pageNum, type: int }
+        - { field: pageSize, type: int }
+    error-codes: [1000, 1001, 1002, 1004]
+
+  - method: GET
+    path: /consultations/{orderNo}
+    summary: 获取咨询订单详情
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      path:
+        - { field: orderNo, type: string, required: true, validate: "长度 1-40" }
+    response:
+      data:
+        - { field: orderNo, type: string }
+        - { field: contactName, type: string }
+        - { field: contactType, type: string }
+        - { field: contactValue, type: string }
+        - { field: topicText, type: string }
+        - { field: requestText, type: string }
+        - { field: expectedTime, type: string }
+        - { field: priceCents, type: int }
+        - { field: freeQuotaUsed, type: boolean }
+        - { field: status, type: string }
+        - { field: adminNote, type: string }
+        - { field: confirmedAt, type: string }
+        - { field: createdAt, type: string }
+    error-codes: [1000, 1001, 1002, 1004]
+
+  - method: POST
+    path: /consultations/{orderNo}/confirm
+    summary: 确认咨询排期并占用免费名额（前 10 个确认订单免费）
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      path:
+        - { field: orderNo, type: string, required: true, validate: "长度 1-40" }
+      body:
+        - { field: adminNote, type: string, required: false, validate: "长度 0-500" }
+    response:
+      data:
+        - { field: orderNo, type: string }
+        - { field: status, type: string, desc: "confirmed" }
+        - { field: priceCents, type: int, desc: "0 或 50000；确认时按免费名额判定" }
+        - { field: freeQuotaUsed, type: boolean }
+        - { field: confirmedAt, type: string, desc: "ISO-8601 UTC" }
+    error-codes: [1000, 1001, 1002, 1004, 2304]
+
+  - method: POST
+    path: /consultations/{orderNo}/complete
+    summary: 标记咨询完成
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      path:
+        - { field: orderNo, type: string, required: true, validate: "长度 1-40" }
+      body:
+        - { field: adminNote, type: string, required: false, validate: "长度 0-500" }
+    response:
+      data:
+        - { field: orderNo, type: string }
+        - { field: status, type: string, desc: "completed" }
+        - { field: completedAt, type: string, desc: ISO-8601 UTC }
+    error-codes: [1000, 1001, 1002, 1004, 2304]
+
+  - method: POST
+    path: /consultations/{orderNo}/cancel
+    summary: 取消咨询订单（敏感操作，留日志）
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      path:
+        - { field: orderNo, type: string, required: true, validate: "长度 1-40" }
+      body:
+        - { field: adminNote, type: string, required: true, validate: "长度 1-500；记录取消原因" }
+    response:
+      data:
+        - { field: orderNo, type: string }
+        - { field: status, type: string, desc: "canceled" }
+        - { field: canceledAt, type: string, desc: ISO-8601 UTC }
+    error-codes: [1000, 1001, 1002, 1004, 2304]
+
+  - method: POST
+    path: /consultations/{orderNo}/note
+    summary: 更新咨询订单管理员备注
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      path:
+        - { field: orderNo, type: string, required: true, validate: "长度 1-40" }
+      body:
+        - { field: adminNote, type: string, required: true, validate: "长度 1-500；更新备注内容" }
+    response:
+      data:
+        - { field: orderNo, type: string }
+        - { field: adminNote, type: string }
+    error-codes: [1000, 1001, 1002, 1004]
+
+  - method: GET
+    path: /operation-logs
+    summary: 分页查询敏感操作日志
+    auth: 需登录 + ADMIN
+    audience: web-admin
+    request:
+      query:
+        - { field: pageNum, type: int, default: 1, min: 1 }
+        - { field: pageSize, type: int, default: 20, max: 100 }
+        - { field: targetType, type: string, required: false, validate: "content/tip/consultation/admin" }
+        - { field: action, type: string, required: false }
+    response:
+      data:
+        - { field: list, type: array, desc: 元素字段 id/username/action/targetType/targetCode/beforeState/afterState/createdAt }
+        - { field: total, type: int }
+        - { field: pageNum, type: int }
+        - { field: pageSize, type: int }
+    error-codes: [1000, 1001, 1002, 1004]
+
+# ---- 错误码表（四要素之一）----
+error-code-table:
+  - { code: 2300, meaning: 管理员登录失败（账号或密码错误）, user-text: 账号或密码错误 }
+  - { code: 2301, meaning: 主题/专题/内容编码重复, user-text: 编码已存在，请更换后重试 }
+  - { code: 2302, meaning: 内容编辑并发冲突，version 不匹配, user-text: 内容已被他人更新，请重新加载后再编辑 }
+  - { code: 2303, meaning: 内容状态流转不合法, user-text: 当前内容状态不支持该操作 }
+  - { code: 2304, meaning: 订单状态流转不合法, user-text: 当前订单状态不支持该操作 }
+  - { code: 2305, meaning: 内容类型/来源/状态非法或内容不存在, user-text: 内容参数非法或内容不存在 }
+  - { code: 2306, meaning: 敏感操作日志写入失败, user-text: 操作未完成，请稍后重试 }
+  - { code: 2307, meaning: 管理员账号已停用, user-text: 账号不可用，请联系管理员 }

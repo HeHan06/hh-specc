@@ -1,0 +1,26 @@
+# 接口契约：站点配置（site）
+# 格式依据：.specc/platform/api-conventions.md 第 5 节
+# 效力：契约是前后端唯一真相源；implement 阶段禁止私改（宪法 4.3）
+# 门禁检查：四要素（统一响应体/错误码/认证/分页）缺一即失败
+# 通用错误码/统一响应体/分页唯一源见 contracts/common.yaml，此处不复制其内容
+
+module: 站点配置
+error-code-range: 2400-2499
+base-path: /api/site
+auth: JWT Bearer
+
+endpoints:
+  - method: GET
+    path: /config
+    summary: 下发站点公开配置（仅管理员微信号，供访客加微信完成线下收款）
+    auth: 公开（鉴权白名单）
+    audience: web-reader
+    request: {}
+    response:
+      data:
+        - { field: wechatId, type: string, desc: "管理员微信号；来源为环境变量 ADMIN_WECHAT_ID，默认 15306507997" }
+    error-codes: [1004]
+
+# ---- 错误码表（四要素之一）----
+# 本模块无业务错误码，仅复用 contracts/common.yaml 的通用错误码（如 1004 系统繁忙）。
+error-code-table: []

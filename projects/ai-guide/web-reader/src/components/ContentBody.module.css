@@ -1,0 +1,264 @@
+/* 内容正文结构化渲染样式：基础 Markdown 排版 + 各类型差异化视觉。 */
+
+/* —— 基础 Markdown 排版（.md 容器内的裸元素）—— */
+.md {
+  color: #374151;
+  font-size: 15.5px;
+  line-height: 1.8;
+}
+
+.md :global(p) {
+  margin: 0 0 12px;
+}
+
+.md :global(p:last-child) {
+  margin-bottom: 0;
+}
+
+.md :global(h2),
+.md :global(h3),
+.md :global(h4) {
+  color: var(--color-text);
+  margin: 18px 0 10px;
+  line-height: 1.4;
+}
+
+.md :global(h3) {
+  font-size: 16px;
+}
+
+.md :global(h4) {
+  font-size: 15px;
+}
+
+.md :global(ul),
+.md :global(ol) {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+
+.md :global(li) {
+  margin: 4px 0;
+}
+
+.md :global(code) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13.5px;
+  background: var(--color-surface-muted);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.md :global(pre) {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 14px 16px;
+  border-radius: var(--radius-btn);
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.md :global(pre code) {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+.md :global(blockquote) {
+  margin: 0 0 12px;
+  padding: 8px 16px;
+  border-left: 3px solid var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text-secondary);
+}
+
+.md :global(table) {
+  border-collapse: collapse;
+  margin: 0 0 12px;
+  width: 100%;
+}
+
+.md :global(th),
+.md :global(td) {
+  border: 1px solid var(--color-border);
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 14px;
+}
+
+.md :global(th) {
+  background: var(--color-surface-muted);
+  font-weight: 600;
+}
+
+.md :global(strong) {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+/* —— 通用标签 —— */
+.strongTag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-primary);
+  background: #eef2ff;
+}
+
+.mutedTag {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+/* —— question：标准答案突出 —— */
+.answerCard {
+  margin-bottom: 16px;
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05), 0 8px 24px rgba(16, 24, 40, 0.05);
+}
+
+.answerText {
+  margin-top: 12px;
+}
+
+/* —— question：考察点 / 关联 弱化 —— */
+.mutedCard {
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--color-surface-muted);
+}
+
+.mutedText {
+  margin-top: 6px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.mutedText :global(li) {
+  color: var(--color-text-secondary);
+}
+
+/* —— interview：面试概览元信息卡 —— */
+.overviewCard {
+  margin-bottom: 16px;
+  padding: 18px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05), 0 8px 24px rgba(16, 24, 40, 0.05);
+}
+
+.overviewGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px 24px;
+  margin-top: 12px;
+}
+
+.overviewItem {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.overviewLabel {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.overviewValue {
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+/* —— interview：问题与回答 Q&A 卡 —— */
+.blockSection {
+  margin-bottom: 16px;
+}
+
+.qaList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.qaCard {
+  padding: 16px 18px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.qaQuestion {
+  font-size: 15.5px;
+  font-weight: 650;
+  color: var(--color-text);
+  line-height: 1.45;
+}
+
+.qaAnswer {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--color-border);
+}
+
+/* —— interview：复盘总结分组卡 —— */
+.reviewList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.reviewCard {
+  padding: 14px 18px;
+  border-left: 3px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-muted);
+}
+
+.reviewGood {
+  border-left-color: #10b981;
+}
+
+.reviewBad {
+  border-left-color: #f59e0b;
+}
+
+.reviewNext {
+  border-left-color: #3b82f6;
+}
+
+.reviewHeading {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 8px;
+}
+
+.reviewBody {
+  font-size: 14.5px;
+}
+
+@media (max-width: 900px) {
+  .overviewGrid {
+    grid-template-columns: 1fr;
+  }
+}

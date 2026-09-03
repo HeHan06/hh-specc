@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Agent 面试指南 · 全页面视觉稿（桌面 + 移动端）</title>
+<style>
+  :root {
+    --primary: #4f46e5;
+    --primary-weak: #eef2ff;
+    --primary-strong: #4338ca;
+    --text: #1f2937;
+    --text-2: #6b7280;
+    --text-3: #9ca3af;
+    --border: #e5e7eb;
+    --bg: #ffffff;
+    --bg-soft: #f7f8fa;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(16,24,40,.08), 0 8px 30px rgba(16,24,40,.10);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    color: var(--text);
+    background: #eceef2;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--primary); text-decoration: none; }
+  button { font-family: inherit; }
+
+  /* 顶部画廊导航 */
+  .gallery-nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(255,255,255,.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 24px;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .gallery-nav .gtitle { font-weight: 700; font-size: 14px; margin-right: 8px; white-space: nowrap; }
+  .gallery-nav a {
+    font-size: 12.5px; color: var(--text-2);
+    padding: 5px 11px; border-radius: 20px;
+    border: 1px solid var(--border); background: #fff; white-space: nowrap;
+  }
+  .gallery-nav a:hover { color: var(--primary); border-color: var(--primary); }
+
+  .gallery { max-width: 1400px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  .screen { margin-bottom: 56px; }
+  .screen-head { margin-bottom: 16px; }
+  .screen-head h2 { font-size: 18px; margin: 0 0 4px; }
+  .screen-head p { margin: 0; font-size: 13px; color: var(--text-2); }
+  .screen-head .route { font-family: var(--mono); font-size: 11.5px; color: var(--text-3); background: #eef0f3; padding: 1px 7px; border-radius: 4px; margin-left: 8px; }
+
+  /* 桌面 + 手机并排 */
+  .views { display: flex; gap: 32px; align-items: flex-start; }
+  .browser { flex: 1; min-width: 0; background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .browser-bar {
+    display: flex; align-items: center; gap: 6px;
+    padding: 10px 14px; background: #fafbfc; border-bottom: 1px solid var(--border);
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot.r { background: #f87171; } .dot.y { background: #fbbf24; } .dot.g { background: #34d399; }
+  .browser-url { margin-left: 10px; flex: 1; font-family: var(--mono); font-size: 11px; color: var(--text-3); background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; max-width: 480px; }
+
+  /* 手机外框 */
+  .phone-wrap { flex: none; width: 340px; }
+  .phone-label { text-align: center; color: var(--text-3); font-size: 12px; margin-bottom: 10px; }
+  .phone {
+    border-radius: 36px;
+    background: #0b1023;
+    padding: 10px;
+    box-shadow: 0 24px 60px rgba(16,24,40,.28);
+  }
+  .phone-screen {
+    position: relative;
+    border-radius: 27px;
+    background: #fff;
+    overflow: hidden;
+    height: 680px;
+    overflow-y: auto;
+  }
+  .phone-notch { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 126px; height: 24px; background: #0b1023; border-radius: 0 0 14px 14px; z-index: 5; }
+
+  /* ===== 通用 UI 组件 ===== */
+  .btn { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 16px; border-radius: 8px; font-size: 13px; font-weight: 500; border: 1px solid var(--border); background: #fff; color: var(--text); cursor: pointer; white-space: nowrap; }
+  .btn:hover { background: var(--bg-soft); }
+  .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-strong); }
+  .btn-block { width: 100%; height: 40px; }
+  .tag { display: inline-block; background: var(--primary-weak); color: var(--primary-strong); padding: 2px 9px; border-radius: 20px; font-size: 11.5px; }
+  .field { margin-bottom: 14px; }
+  .label { display: block; font-size: 12.5px; color: var(--text-2); margin-bottom: 6px; font-weight: 500; }
+  .input, .textarea { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 13.5px; font-family: inherit; color: var(--text); background: #fff; outline: none; }
+  .input:focus, .textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-weak); }
+  .textarea { min-height: 80px; resize: vertical; }
+  .radio-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .radio { border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; font-size: 13px; color: var(--text-2); cursor: pointer; background: #fff; }
+  .radio.on { border-color: var(--primary); color: var(--primary-strong); background: var(--primary-weak); font-weight: 600; }
+  .form-card { max-width: 560px; margin: 0 auto; padding: 40px 36px; }
+  .form-card h1 { font-size: 22px; margin: 0 0 4px; }
+  .form-card .sub { color: var(--text-2); font-size: 13px; margin: 0 0 24px; }
+  .alert { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; border-radius: 8px; padding: 9px 12px; font-size: 12.5px; margin-bottom: 12px; }
+  .hint { background: var(--primary-weak); border: 1px solid #c7d2fe; color: var(--primary-strong); border-radius: 8px; padding: 10px 14px; font-size: 12.5px; margin-bottom: 16px; }
+
+  /* ===== 首页 Hero：深色科技感 ===== */
+  .hero { position: relative; overflow: hidden; color: #fff; background: radial-gradient(1200px 640px at 50% -12%, rgba(99,102,241,.42), transparent 60%), radial-gradient(900px 520px at 88% 8%, rgba(139,92,246,.34), transparent 58%), radial-gradient(820px 500px at 10% 18%, rgba(34,211,238,.26), transparent 55%), linear-gradient(180deg, #0b1023 0%, #111c3a 46%, #1b2355 100%); }
+  .hero::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px); background-size: 46px 46px; -webkit-mask-image: radial-gradient(ellipse at 50% 0%, #000 18%, transparent 72%); mask-image: radial-gradient(ellipse at 50% 0%, #000 18%, transparent 72%); pointer-events: none; }
+  .hero::after { content: ""; position: absolute; inset: 0; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E"); pointer-events: none; mix-blend-mode: overlay; }
+  .hero-glow { position: absolute; border-radius: 50%; filter: blur(90px); opacity: .55; pointer-events: none; }
+  .hero-nav { position: relative; z-index: 2; display: flex; align-items: center; gap: 14px; padding: 16px 32px; }
+  .hero-nav .brand { color: #fff; font-weight: 700; font-size: 14px; }
+  .glass-btn { height: 32px; padding: 0 14px; border-radius: 8px; font-size: 13px; font-weight: 500; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.08); color: #e5e7eb; backdrop-filter: blur(8px); cursor: pointer; }
+  .glass-btn.primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); border-color: transparent; color: #fff; }
+  .hero-body { position: relative; z-index: 2; text-align: center; padding: 64px 24px 68px; }
+  .hero-badge { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: #c7d2fe; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); padding: 5px 15px; border-radius: 999px; margin-bottom: 24px; backdrop-filter: blur(8px); }
+  .hero-badge .pulse { width: 6px; height: 6px; border-radius: 50%; background: #34d399; box-shadow: 0 0 8px #34d399; }
+  .hero-title { font-size: 46px; line-height: 1.15; margin: 0 0 16px; letter-spacing: -.02em; font-weight: 800; background: linear-gradient(120deg, #ffffff 8%, #c7d2fe 42%, #a5b4fc 68%, #e9d5ff 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+  .hero-sub { font-size: 15.5px; color: #a5b4fc; margin: 0 0 34px; opacity: .92; }
+  .hero-search { max-width: 560px; margin: 0 auto 30px; position: relative; }
+  .hero-search input { width: 100%; height: 50px; border-radius: 14px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.08); color: #fff; padding: 0 18px 0 44px; font-size: 14px; outline: none; backdrop-filter: blur(12px); }
+  .hero-search input::placeholder { color: #94a3b8; }
+  .hero-search .ico { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
+  .hero-cta { display: inline-flex; align-items: center; gap: 8px; height: 46px; padding: 0 30px; border-radius: 12px; font-size: 14.5px; font-weight: 600; color: #fff; cursor: pointer; border: none; background: linear-gradient(135deg, #6366f1, #8b5cf6); box-shadow: 0 10px 30px rgba(99,102,241,.42); }
+  .hero-stats { display: flex; justify-content: center; gap: 48px; margin-top: 46px; }
+  .hero-stats .stat { text-align: center; }
+  .hero-stats .num { font-size: 26px; font-weight: 700; color: #fff; }
+  .hero-stats .lbl { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+
+  /* 浅色卡片区（首页下半） */
+  .cards { padding: 40px; }
+  .cards h3 { font-size: 14px; margin: 0 0 14px; }
+  .cards-grid { display: grid; gap: 12px; }
+  .cards-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+  .cards-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .topic-card, .update-card { border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .topic-card .t { font-weight: 600; }
+  .topic-card .d { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+  .update-card .u { font-weight: 600; margin-top: 8px; }
+  .update-card .m { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+
+  /* ===== 阅读页三栏 ===== */
+  .reader { display: grid; grid-template-columns: 240px 1fr 190px; height: 640px; }
+  .tree { border-right: 1px solid var(--border); padding: 14px 10px; overflow: auto; background: #fff; }
+  .tree-cap { font-size: 11px; color: var(--text-3); padding: 2px 8px 10px; }
+  .tree-group { font-size: 13px; font-weight: 600; padding: 7px 8px; }
+  .tree-cat { font-size: 12.5px; color: var(--text-2); padding: 5px 8px 5px 16px; }
+  .tree-doc { font-size: 12.5px; padding: 6px 8px 6px 20px; }
+  .tree-doc.active { border-left: 2px solid var(--primary); background: var(--primary-weak); color: var(--primary-strong); font-weight: 600; }
+  .tree-div { border-top: 1px solid var(--border); margin: 8px 0; }
+  .doc { padding: 32px 40px 60px; overflow: auto; border-right: 1px solid var(--border); }
+  .crumbs { font-size: 12.5px; color: var(--text-3); margin-bottom: 12px; }
+  .doc-title { font-size: 28px; margin: 0 0 8px; }
+  .doc-meta { font-size: 12.5px; color: var(--text-3); padding-bottom: 20px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+  .qa { padding: 26px 0; border-bottom: 1px solid var(--border); }
+  .qa-head { display: flex; gap: 10px; align-items: baseline; }
+  .qa-num { font-family: var(--mono); font-size: 13px; color: var(--primary); font-weight: 700; }
+  .qa-title { font-size: 19px; font-weight: 650; margin: 0; }
+  .qa-label { font-size: 11.5px; font-weight: 700; color: var(--text-3); margin: 16px 0 6px; letter-spacing: .03em; }
+  .qa p { margin: 0 0 12px; color: #374151; font-size: 14.5px; }
+  .qa ul { margin: 0 0 12px; padding-left: 20px; color: #374151; font-size: 14px; }
+  .pager { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 36px; }
+  .pager a { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; color: var(--text); }
+  .pager .dir { font-size: 11.5px; color: var(--text-3); display: block; margin-bottom: 4px; }
+  .pager .ttl { font-size: 13.5px; font-weight: 600; }
+  .pager a.next { text-align: right; }
+  .toc { padding: 22px 14px; overflow: auto; background: var(--bg-soft); }
+  .toc-title { font-size: 11.5px; font-weight: 700; color: var(--text-3); margin: 0 0 10px; }
+  .toc a { display: block; padding: 5px 0 5px 12px; border-left: 2px solid var(--border); font-size: 12.5px; color: var(--text-2); line-height: 1.4; }
+  .toc a.active { color: var(--primary-strong); border-left-color: var(--primary); font-weight: 600; }
+
+  /* ===== 手机端覆盖 ===== */
+  .phone-screen .hero-nav { padding: 34px 16px 12px; }
+  .phone-screen .hero-body { padding: 36px 18px 40px; }
+  .phone-screen .hero-title { font-size: 27px; }
+  .phone-screen .hero-sub { font-size: 13px; margin-bottom: 24px; }
+  .phone-screen .hero-search { margin-bottom: 22px; }
+  .phone-screen .hero-search input { height: 44px; }
+  .phone-screen .hero-stats { gap: 26px; margin-top: 30px; }
+  .phone-screen .hero-stats .num { font-size: 20px; }
+  .phone-screen .cards { padding: 24px 16px; }
+  .phone-screen .cards-grid.cols-4, .phone-screen .cards-grid.cols-3 { grid-template-columns: 1fr 1fr; }
+  .phone-mnav { display: flex; align-items: center; gap: 10px; padding: 34px 16px 12px; border-bottom: 1px solid var(--border); }
+  .phone-mnav .brand { font-weight: 700; font-size: 13.5px; }
+  .phone-mnav .menu { margin-left: auto; width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--text-2); }
+  .phone-doc { padding: 20px 16px 48px; }
+  .phone-doc .doc-title { font-size: 22px; }
+  .phone-search { padding: 20px 16px; }
+  .phone-form { padding: 24px 18px; }
+  .phone-form h1 { font-size: 20px; margin: 0 0 4px; }
+  .phone-form .sub { color: var(--text-2); font-size: 12.5px; margin: 0 0 18px; }
+  .phone-order { padding: 24px 16px; }
+  .row { display: flex; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+  .row .k { color: var(--text-2); }
+  .order-card { border: 1px solid var(--border); border-radius: 12px; padding: 24px 20px; }
+  /* 移动端抽屉示意（阅读页） */
+  .drawer { position: absolute; inset: 0; z-index: 6; display: flex; }
+  .drawer .mask { flex: 1; background: rgba(15,23,42,.4); }
+  .drawer .panel { width: 78%; background: #fff; padding: 44px 14px 20px; overflow: auto; }
+  .drawer .panel .tree-group { border-top: 1px solid var(--border); margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<nav class="gallery-nav">
+  <span class="gtitle">全页面视觉稿 · 桌面 + 移动端</span>
+  <a href="#home">首页</a>
+  <a href="#reader">阅读页（核心）</a>
+  <a href="#search">搜索</a>
+  <a href="#tip">打赏</a>
+  <a href="#consultation">付费咨询</a>
+  <a href="#order">订单状态</a>
+</nav>
+
+<div class="gallery">
+
+  <!-- ================= 1. 首页 ================= -->
+  <section class="screen" id="home">
+    <div class="screen-head">
+      <h2>1. 首页<span class="route">/</span></h2>
+      <p>深色科技感 Hero（渐变光晕 + 网格 + 噪点）+ 热门主题 + 最近更新。桌面与手机端同源响应式。</p>
+    </div>
+    <div class="views">
+      <!-- 桌面端 -->
+      <div class="browser">
+        <div class="browser-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="browser-url">localhost:5173/</span></div>
+        <div class="hero">
+          <div class="hero-glow" style="width:520px;height:520px;background:#6366f1;top:-160px;left:50%;transform:translateX(-50%);"></div>
+          <div class="hero-glow" style="width:380px;height:380px;background:#8b5cf6;top:-70px;right:-90px;"></div>
+          <div class="hero-glow" style="width:320px;height:320px;background:#22d3ee;top:70px;left:-100px;"></div>
+          <div class="hero-nav">
+            <span class="brand">AI Agent 面试指南</span>
+            <div style="margin-left:auto;display:flex;gap:8px;">
+              <span class="glass-btn">打赏</span>
+              <span class="glass-btn primary">付费咨询</span>
+            </div>
+          </div>
+          <div class="hero-body">
+            <span class="hero-badge"><span class="pulse"></span>一手面经 · 持续沉淀 · v1.0</span>
+            <h1 class="hero-title">AI Agent 面试指南</h1>
+            <p class="hero-sub">把零散的一手面试经验，沉淀成可系统备考、可持续更新的知识体系。</p>
+            <div class="hero-search"><span class="ico">🔍</span><input placeholder="搜索问题、知识点或面经…" /></div>
+            <span class="hero-cta">开始系统化阅读 →</span>
+            <div class="hero-stats">
+              <div class="stat"><div class="num">45</div><div class="lbl">篇内容</div></div>
+              <div class="stat"><div class="num">4</div><div class="lbl">大主题</div></div>
+              <div class="stat"><div class="num">15+</div><div class="lbl">公司面经</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="cards">
+          <h3>热门主题</h3>
+          <div class="cards-grid cols-4">
+            <div class="topic-card"><div class="t">AI</div><div class="d">Agent / 大模型</div></div>
+            <div class="topic-card"><div class="t">后端基础知识</div><div class="d">Java / Redis / MQ</div></div>
+            <div class="topic-card"><div class="t">面试记录</div><div class="d">真实面经复盘</div></div>
+            <div class="topic-card"><div class="t">简历优化</div><div class="d">STAR / 简历准备</div></div>
+          </div>
+          <h3 style="margin-top:26px;">最近更新</h3>
+          <div class="cards-grid cols-3">
+            <div class="update-card"><span class="tag">AI</span><div class="u">Agent 核心概念</div><div class="m">更新于 2026-09-01</div></div>
+            <div class="update-card"><span class="tag">Redis</span><div class="u">Redis 核心问题集</div><div class="m">更新于 2026-08-28</div></div>
+            <div class="update-card"><span class="tag">面经</span><div class="u">字节跳动面经</div><div class="m">更新于 2026-08-27</div></div>
+          </div>
+        </div>
+      </div>
+      <!-- 移动端 -->
+      <div class="phone-wrap">
+        <div class="phone-label">手机端</div>
+        <div class="phone"><div class="phone-screen">
+          <div class="phone-notch"></div>
+          <div class="hero">
+            <div class="hero-glow" style="width:240px;height:240px;background:#6366f1;top:-80px;left:50%;transform:translateX(-50%);"></div>
+            <div class="hero-nav"><span class="brand">AI Agent 面试指南</span><div style="margin-left:auto;display:flex;gap:6px;"><span class="glass-btn" style="padding:0 10px;height:28px;">打赏</span></div></div>
+            <div class="hero-body">
+              <span class="hero-badge"><span class="pulse"></span>一手面经 · v1.0</span>
+              <h1 class="hero-title">AI Agent<br />面试指南</h1>
+              <p class="hero-sub">把零散的一手面试经验，沉淀成可系统备考的知识体系。</p>
+              <div class="hero-search"><span class="ico">🔍</span><input placeholder="搜索知识点或面经…" /></div>
+              <span class="hero-cta" style="height:42px;padding:0 22px;font-size:13.5px;">开始系统化阅读 →</span>
+              <div class="hero-stats">
+                <div class="stat"><div class="num">45</div><div class="lbl">篇内容</div></div>
+                <div class="stat"><div class="num">4</div><div class="lbl">大主题</div></div>
+                <div class="stat"><div class="num">15+</div><div class="lbl">公司面经</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="cards">
+            <h3>热门主题</h3>
+            <div class="cards-grid cols-4">
+              <div class="topic-card"><div class="t">AI</div><div class="d">Agent / 大模型</div></div>
+              <div class="topic-card"><div class="t">后端</div><div class="d">Java / Redis / MQ</div></div>
+              <div class="topic-card"><div class="t">面试记录</div><div class="d">真实面经</div></div>
+              <div class="topic-card"><div class="t">简历优化</div><div class="d">STAR / 准备</div></div>
+            </div>
+            <h3 style="margin-top:22px;">最近更新</h3>
+            <div class="cards-grid cols-3">
+              <div class="update-card"><span class="tag">AI</span><div class="u">Agent 核心概念</div></div>
+              <div class="update-card"><span class="tag">Redis</span><div class="u">Redis 核心问题集</div></div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 2. 阅读页 ================= -->
+  <section class="screen" id="reader">
+    <div class="screen-head">
+      <h2>2. 阅读页（核心）<span class="route">/docs/:categoryCode</span></h2>
+      <p>三栏文档式：左侧树形目录 + 中间内容流（多问题连续滚动）+ 右侧本页目录。移动端侧边栏收为抽屉。</p>
+    </div>
+    <div class="views">
+      <!-- 桌面端 -->
+      <div class="browser">
+        <div class="browser-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="browser-url">localhost:5173/docs/ai-agent</span></div>
+        <div class="reader">
+          <div class="tree">
+            <div class="tree-cap">学习目录</div>
+            <div class="tree-group">AI <span style="color:var(--text-3);float:right;">▼</span></div>
+            <div class="tree-cat">Agent 知识 <span style="color:var(--text-3);">▼</span></div>
+            <div class="tree-doc active">Agent 核心概念</div>
+            <div class="tree-doc">记忆（Memory）设计</div>
+            <div class="tree-doc">工具调用（Tool Use）</div>
+            <div class="tree-doc">Agent 评测（Eval）</div>
+            <div class="tree-div"></div>
+            <div class="tree-group">后端基础知识 <span style="color:var(--text-3);float:right;">▼</span></div>
+            <div class="tree-cat">Java 基础</div>
+            <div class="tree-cat">Redis</div>
+            <div class="tree-div"></div>
+            <div class="tree-group">面试记录 <span style="color:var(--text-3);float:right;">▼</span></div>
+            <div class="tree-cat">字节跳动</div>
+            <div class="tree-cat">阿里</div>
+            <div class="tree-div"></div>
+            <div class="tree-group">简历优化 <span style="color:var(--text-3);float:right;">▼</span></div>
+          </div>
+          <div class="doc">
+            <div class="crumbs">AI / Agent 知识</div>
+            <h1 class="doc-title">Agent 核心概念</h1>
+            <div class="doc-meta"><span class="tag">AI</span> <span style="margin-left:10px;">更新于 2026-09-01 · 共 5 个问题</span></div>
+
+            <div class="qa">
+              <div class="qa-head"><span class="qa-num">01</span><h2 class="qa-title">AI Agent 是什么？和普通 Chatbot 有什么区别？</h2></div>
+              <div class="qa-label">考察点</div>
+              <ul><li>是否理解 Chatbot 是单轮问答、Agent 是系统工程</li><li>能否讲清 Agent 的能力增量</li></ul>
+              <div class="qa-label">标准答案</div>
+              <p>Chatbot 是单轮问答，价值上限是「告诉你怎么做」；Agent 是围绕大模型构建的系统工程，核心是「规划 → 决策 → 执行 → 观察 → 再决策」的循环。</p>
+            </div>
+            <div class="qa">
+              <div class="qa-head"><span class="qa-num">02</span><h2 class="qa-title">Agent 与 Workflow 的边界在哪里？</h2></div>
+              <div class="qa-label">标准答案</div>
+              <p>Workflow 是固定流程编排；Agent 的路径由模型动态决定。能用确定性 Workflow 解决的，不过度使用 Agent。</p>
+            </div>
+            <div class="qa">
+              <div class="qa-head"><span class="qa-num">03</span><h2 class="qa-title">一个生产级 Agent 由哪些模块组成？</h2></div>
+              <div class="qa-label">标准答案</div>
+              <p>上下文构建、记忆管理、工具调用、任务编排、评测、安全审查、异常重试、可观测性。</p>
+            </div>
+
+            <div class="pager">
+              <a><span class="dir">上一篇</span><span class="ttl">（已是第一篇）</span></a>
+              <a class="next"><span class="dir">下一篇</span><span class="ttl">记忆（Memory）设计</span></a>
+            </div>
+          </div>
+          <div class="toc">
+            <p class="toc-title">本页目录</p>
+            <a class="active">AI Agent 是什么？</a>
+            <a>Agent 与 Workflow 的边界</a>
+            <a>生产级 Agent 模块</a>
+            <a>上下文管理设计</a>
+            <a>常见工程陷阱</a>
+          </div>
+        </div>
+      </div>
+      <!-- 移动端：带抽屉 -->
+      <div class="phone-wrap">
+        <div class="phone-label">手机端（目录收为抽屉）</div>
+        <div class="phone"><div class="phone-screen">
+          <div class="phone-notch"></div>
+          <div class="phone-mnav"><span class="menu">☰</span><span class="brand">Agent 核心概念</span></div>
+          <div class="phone-doc">
+            <div class="crumbs">AI / Agent 知识</div>
+            <h1 class="doc-title">Agent 核心概念</h1>
+            <div class="doc-meta"><span class="tag">AI</span> <span style="margin-left:8px;">共 5 个问题</span></div>
+            <div class="qa">
+              <div class="qa-head"><span class="qa-num">01</span><h2 class="qa-title" style="font-size:16px;">AI Agent 是什么？和普通 Chatbot 有什么区别？</h2></div>
+              <div class="qa-label">标准答案</div>
+              <p>Chatbot 是单轮问答；Agent 是围绕大模型构建的系统工程，核心是「规划 → 决策 → 执行 → 观察 → 再决策」的循环。</p>
+            </div>
+            <div class="qa">
+              <div class="qa-head"><span class="qa-num">02</span><h2 class="qa-title" style="font-size:16px;">Agent 与 Workflow 的边界在哪里？</h2></div>
+              <div class="qa-label">标准答案</div>
+              <p>Workflow 是固定流程编排；Agent 的路径由模型动态决定。</p>
+            </div>
+            <div class="pager">
+              <a><span class="dir">上一篇</span><span class="ttl">（第一篇）</span></a>
+              <a class="next"><span class="dir">下一篇</span><span class="ttl">记忆设计</span></a>
+            </div>
+          </div>
+          <!-- 抽屉 -->
+          <div class="drawer">
+            <div class="mask"></div>
+            <div class="panel">
+              <div class="tree-cap" style="font-weight:700;color:var(--text);">学习目录</div>
+              <div class="tree-group">AI <span style="color:var(--text-3);float:right;">▼</span></div>
+              <div class="tree-doc active">Agent 核心概念</div>
+              <div class="tree-doc">记忆（Memory）设计</div>
+              <div class="tree-doc">工具调用（Tool Use）</div>
+              <div class="tree-group">后端基础知识 <span style="color:var(--text-3);float:right;">▼</span></div>
+              <div class="tree-cat">Java 基础</div>
+              <div class="tree-cat">Redis</div>
+              <div class="tree-group">面试记录 <span style="color:var(--text-3);float:right;">▼</span></div>
+              <div class="tree-cat">字节跳动</div>
+              <div class="tree-cat">阿里</div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 3. 搜索页 ================= -->
+  <section class="screen" id="search">
+    <div class="screen-head">
+      <h2>3. 搜索页<span class="route">/search</span></h2>
+      <p>按标题、摘要、标签检索；结果卡片直接进入对应内容流。</p>
+    </div>
+    <div class="views">
+      <div class="browser">
+        <div class="browser-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="browser-url">localhost:5173/search</span></div>
+        <div style="padding:40px 48px 56px;max-width:720px;margin:0 auto;">
+          <h1 style="font-size:24px;margin:0 0 4px;">搜索</h1>
+          <p style="color:var(--text-2);font-size:13px;margin:0 0 22px;">按标题、摘要或标签，检索已发布的内容</p>
+          <div style="display:flex;gap:10px;margin-bottom:24px;"><input class="input" style="flex:1;height:42px;" value="Agent" /><span class="btn btn-primary" style="height:42px;padding:0 26px;">搜索</span></div>
+          <div style="font-size:13px;color:var(--text-3);margin-bottom:12px;">共 3 条结果</div>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div style="border:1px solid var(--border);border-radius:10px;padding:16px 18px;"><span class="tag">AI</span><div style="font-weight:600;margin-top:8px;">AI Agent 是什么？和普通 Chatbot 有什么区别？</div><div style="font-size:13px;color:var(--text-2);margin-top:4px;">Chatbot 是单轮问答；Agent 是系统工程……</div></div>
+            <div style="border:1px solid var(--border);border-radius:10px;padding:16px 18px;"><span class="tag">AI</span><div style="font-weight:600;margin-top:8px;">Agent 的记忆（Memory）如何设计？</div><div style="font-size:13px;color:var(--text-2);margin-top:4px;">短期记忆与长期记忆的分层策略……</div></div>
+            <div style="border:1px solid var(--border);border-radius:10px;padding:16px 18px;"><span class="tag">AI</span><div style="font-weight:600;margin-top:8px;">Agent 的工具调用（Tool Use）机制？</div><div style="font-size:13px;color:var(--text-2);margin-top:4px;">Function Calling 与工具白名单……</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-wrap">
+        <div class="phone-label">手机端</div>
+        <div class="phone"><div class="phone-screen">
+          <div class="phone-notch"></div>
+          <div class="phone-mnav"><span class="brand">搜索</span></div>
+          <div class="phone-search">
+            <div style="display:flex;gap:8px;margin-bottom:18px;"><input class="input" style="flex:1;height:40px;" value="Agent" /><span class="btn btn-primary" style="height:40px;padding:0 16px;">搜索</span></div>
+            <div style="font-size:12px;color:var(--text-3);margin-bottom:10px;">共 3 条结果</div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="border:1px solid var(--border);border-radius:10px;padding:13px 15px;"><span class="tag">AI</span><div style="font-weight:600;margin-top:6px;font-size:13.5px;">AI Agent 是什么？和普通 Chatbot 有什么区别？</div><div style="font-size:12px;color:var(--text-2);margin-top:3px;">Chatbot 是单轮问答；Agent 是系统工程……</div></div>
+              <div style="border:1px solid var(--border);border-radius:10px;padding:13px 15px;"><span class="tag">AI</span><div style="font-weight:600;margin-top:6px;font-size:13.5px;">Agent 的记忆（Memory）如何设计？</div><div style="font-size:12px;color:var(--text-2);margin-top:3px;">短期与长期记忆的分层策略……</div></div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 4. 打赏页 ================= -->
+  <section class="screen" id="tip">
+    <div class="screen-head">
+      <h2>4. 打赏页<span class="route">/tip</span></h2>
+      <p>金额档位单选 + 可选联系方式，提交后展示管理员微信线下付款。</p>
+    </div>
+    <div class="views">
+      <div class="browser">
+        <div class="browser-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="browser-url">localhost:5173/tip</span></div>
+        <div class="form-card">
+          <h1>打赏</h1>
+          <p class="sub">支持你喜欢的内容，金额随心意</p>
+          <div class="field"><span class="label">打赏金额</span><div class="radio-row"><span class="radio on">0.1 元</span><span class="radio">1 元</span><span class="radio">5 元</span><span class="radio">10 元</span><span class="radio">50 元</span><span class="radio">100 元</span></div></div>
+          <div class="field"><span class="label">联系人（选填）</span><input class="input" placeholder="怎么称呼你" /></div>
+          <div class="field"><span class="label">联系方式（选填）</span><input class="input" placeholder="手机号或微信" /></div>
+          <div class="field"><span class="label">留言（选填）</span><textarea class="textarea" placeholder="想对作者说的话"></textarea></div>
+          <button class="btn btn-primary btn-block">提交打赏</button>
+        </div>
+      </div>
+      <div class="phone-wrap">
+        <div class="phone-label">手机端</div>
+        <div class="phone"><div class="phone-screen">
+          <div class="phone-notch"></div>
+          <div class="phone-mnav"><span class="brand">打赏</span></div>
+          <div class="phone-form">
+            <h1>打赏</h1>
+            <p class="sub">支持你喜欢的内容，金额随心意</p>
+            <div class="field"><span class="label">打赏金额</span><div class="radio-row"><span class="radio on" style="padding:7px 12px;">0.1 元</span><span class="radio" style="padding:7px 12px;">1 元</span><span class="radio" style="padding:7px 12px;">5 元</span><span class="radio" style="padding:7px 12px;">10 元</span><span class="radio" style="padding:7px 12px;">50 元</span><span class="radio" style="padding:7px 12px;">100 元</span></div></div>
+            <div class="field"><span class="label">联系人（选填）</span><input class="input" placeholder="怎么称呼你" /></div>
+            <div class="field"><span class="label">联系方式（选填）</span><input class="input" placeholder="手机号或微信" /></div>
+            <div class="field"><span class="label">留言（选填）</span><textarea class="textarea" placeholder="想对作者说的话"></textarea></div>
+            <button class="btn btn-primary btn-block">提交打赏</button>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 5. 付费咨询页 ================= -->
+  <section class="screen" id="consultation">
+    <div class="screen-head">
+      <h2>5. 付费咨询页<span class="route">/consultation</span></h2>
+      <p>500 元/半小时计价，前 10 个经确认排期的咨询免费。</p>
+    </div>
+    <div class="views">
+      <div class="browser">
+        <div class="browser-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="browser-url">localhost:5173/consultation</span></div>
+        <div class="form-card">
+          <h1>付费咨询</h1>
+          <p class="sub">计价：500 元/半小时（前 10 个经确认排期的咨询免费）</p>
+          <div class="hint">当前免费名额剩余 7 个</div>
+          <div class="field"><span class="label">联系人</span><input class="input" placeholder="怎么称呼你" /></div>
+          <div class="field"><span class="label">联系方式类型</span><div class="radio-row"><span class="radio on">手机</span><span class="radio">微信</span></div></div>
+          <div class="field"><span class="label">联系方式</span><input class="input" placeholder="手机号或微信号" /></div>
+          <div class="field"><span class="label">咨询主题</span><input class="input" placeholder="例如：Agent 系统设计" /></div>
+          <div class="field"><span class="label">咨询诉求</span><textarea class="textarea" placeholder="描述你想咨询的问题背景与目标"></textarea></div>
+          <div class="field"><span class="label">期望时间</span><input class="input" placeholder="例如：本周六下午" /></div>
+          <button class="btn btn-primary btn-block">提交咨询</button>
+        </div>
+      </div>
+      <div class="phone-wrap">
+        <div class="phone-label">手机端</div>
+        <div class="phone"><div class="phone-screen">
+          <div class="phone-notch"></div>
+          <div class="phone-mnav"><span class="brand">付费咨询</span></div>
+          <div class="phone-form">
+            <h1>付费咨询</h1>
+            <p class="sub">500 元/半小时 · 前 10 个免费</p>
+            <div class="hint">当前免费名额剩余 7 个</div>
+            <div class="field"><span class="label">联系人</span><input class="input" placeholder="怎么称呼你" /></div>
+            <div class="field"><span class="label">联系方式类型</span><div class="radio-row"><span class="radio on">手机</span><span class="radio">微信</span></div></div>
+            <div class="field"><span class="label">联系方式</span><input class="input" placeholder="手机号或微信号" /></div>
+            <div class="field"><span class="label">咨询主题</span><input class="input" placeholder="例如：Agent 系统设计" /></div>
+            <div class="field"><span class="label">咨询诉求</span><textarea class="textarea" placeholder="描述你的问题背景与目标"></textarea></div>
+            <div class="field"><span class="label">期望时间</span><input class="input" placeholder="例如：本周六下午" /></div>
+            <button class="btn btn-primary btn-block">提交咨询</button>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 6. 订单状态页 ================= -->
+  <section class="screen" id="order">
+    <div class="screen-head">
+      <h2>6. 订单状态页<span class="route">/orders/tips/:orderNo</span></h2>
+      <p>展示订单号、状态、管理员微信与收款/确认时间。</p>
+    </div>
+    <div class="views">
+      <div class="browser">
+        <div class="browser-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="browser-url">localhost:5173/orders/tips/T20260903001</span></div>
+        <div style="max-width:520px;margin:0 auto;padding:48px 36px;">
+          <div class="order-card">
+            <h1 style="font-size:20px;margin:0 0 22px;">订单状态</h1>
+            <div class="row"><span class="k">订单号</span><span style="font-family:var(--mono);">T20260903001</span></div>
+            <div class="row"><span class="k">当前状态</span><span class="tag" style="background:#ecfdf5;color:#047857;">已收款</span></div>
+            <div class="row"><span class="k">管理员微信</span><span>aiguide_admin</span></div>
+            <div class="row"><span class="k">打赏金额</span><span style="font-weight:600;">5.00 元</span></div>
+            <div class="row" style="border-bottom:none;"><span class="k">收款时间</span><span>2026-09-03 14:20:00</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-wrap">
+        <div class="phone-label">手机端</div>
+        <div class="phone"><div class="phone-screen">
+          <div class="phone-notch"></div>
+          <div class="phone-mnav"><span class="brand">订单状态</span></div>
+          <div class="phone-order">
+            <div class="order-card">
+              <h1 style="font-size:18px;margin:0 0 16px;">订单状态</h1>
+              <div class="row"><span class="k">订单号</span><span style="font-family:var(--mono);font-size:12px;">T20260903001</span></div>
+              <div class="row"><span class="k">当前状态</span><span class="tag" style="background:#ecfdf5;color:#047857;">已收款</span></div>
+              <div class="row"><span class="k">管理员微信</span><span>aiguide_admin</span></div>
+              <div class="row"><span class="k">打赏金额</span><span style="font-weight:600;">5.00 元</span></div>
+              <div class="row" style="border-bottom:none;"><span class="k">收款时间</span><span style="font-size:12px;">2026-09-03 14:20:00</span></div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+</body>
+</html>

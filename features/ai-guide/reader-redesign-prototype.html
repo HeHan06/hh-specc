@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Agent 面试指南 · 阅读体验原型</title>
+<style>
+  :root {
+    --primary: #4f46e5;
+    --primary-weak: #eef2ff;
+    --primary-strong: #4338ca;
+    --text: #1f2937;
+    --text-2: #6b7280;
+    --text-3: #9ca3af;
+    --border: #e5e7eb;
+    --bg: #ffffff;
+    --bg-soft: #f7f8fa;
+    --sidebar-w: 264px;
+    --toc-w: 220px;
+    --topbar-h: 56px;
+    --radius: 8px;
+    --shadow-sm: 0 1px 2px rgba(16, 24, 40, .06);
+    --shadow-md: 0 6px 24px rgba(16, 24, 40, .10);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    color: var(--text);
+    background: var(--bg-soft);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.6;
+  }
+  a { color: var(--primary); text-decoration: none; }
+  a:hover { color: var(--primary-strong); }
+  button { font-family: inherit; cursor: pointer; }
+
+  /* ===== 顶部导航 ===== */
+  .topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: var(--topbar-h);
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 20px;
+    z-index: 50;
+  }
+  .menu-btn {
+    display: none;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    border-radius: var(--radius);
+    width: 34px; height: 34px;
+    font-size: 15px;
+    color: var(--text);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .brand:hover { color: var(--text); }
+  .brand-mark {
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .search {
+    flex: 1;
+    max-width: 460px;
+    margin-left: auto;
+    position: relative;
+  }
+  .search input {
+    width: 100%;
+    height: 36px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0 12px 0 34px;
+    font-size: 13px;
+    background: var(--bg-soft);
+    color: var(--text);
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .search input:focus {
+    border-color: var(--primary);
+    background: var(--bg);
+    box-shadow: 0 0 0 3px var(--primary-weak);
+  }
+  .search .ico {
+    position: absolute;
+    left: 11px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-3);
+    font-size: 14px;
+  }
+  .search kbd {
+    position: absolute;
+    right: 10px; top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    background: var(--bg);
+  }
+  .top-actions { display: flex; gap: 8px; }
+  .btn {
+    height: 34px;
+    padding: 0 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--bg-soft); }
+  .btn-primary {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--primary-strong); }
+
+  /* 阅读进度条 */
+  .progress {
+    position: fixed;
+    top: var(--topbar-h);
+    left: 0; right: 0;
+    height: 2px;
+    z-index: 51;
+    pointer-events: none;
+  }
+  .progress i {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  }
+
+  /* ===== 三栏布局 ===== */
+  .layout {
+    display: grid;
+    grid-template-columns: var(--sidebar-w) minmax(0, 1fr) var(--toc-w);
+    gap: 0;
+    max-width: 1500px;
+    margin: 0 auto;
+    padding-top: var(--topbar-h);
+  }
+
+  /* ===== 侧边栏 ===== */
+  .sidebar {
+    position: sticky;
+    top: var(--topbar-h);
+    height: calc(100vh - var(--topbar-h));
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+    background: var(--bg);
+    padding: 14px 10px 40px;
+  }
+  .sidebar-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px 10px;
+    font-size: 12px;
+    color: var(--text-3);
+    letter-spacing: .03em;
+  }
+  .tree { list-style: none; margin: 0; padding: 0; }
+
+  .group { margin-bottom: 4px; }
+  .group-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 7px 8px;
+    border: none;
+    background: none;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    border-radius: 6px;
+    text-align: left;
+  }
+  .group-toggle:hover { background: var(--bg-soft); }
+  .group-toggle .arrow {
+    font-size: 11px;
+    color: var(--text-3);
+    transition: transform .18s;
+  }
+  .group.collapsed .group-toggle .arrow { transform: rotate(-90deg); }
+  .group.collapsed .group-body { display: none; }
+
+  .category { margin: 2px 0 6px; }
+  .category-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 8px 5px 18px;
+    border: none;
+    background: none;
+    font-size: 12.5px;
+    color: var(--text-2);
+    border-radius: 6px;
+    text-align: left;
+  }
+  .category-toggle:hover { background: var(--bg-soft); color: var(--text); }
+  .category-toggle .arrow {
+    font-size: 10px;
+    color: var(--text-3);
+    transition: transform .18s;
+  }
+  .category.collapsed .category-toggle .arrow { transform: rotate(-90deg); }
+  .category.collapsed .doc-list { display: none; }
+
+  .doc-list { list-style: none; margin: 0; padding: 0 0 0 10px; }
+  .doc-item a {
+    display: block;
+    padding: 6px 10px 6px 20px;
+    font-size: 12.5px;
+    color: var(--text-2);
+    border-radius: 6px;
+    border-left: 2px solid transparent;
+    line-height: 1.45;
+  }
+  .doc-item a:hover { background: var(--bg-soft); color: var(--text); }
+  .doc-item a.active {
+    background: var(--primary-weak);
+    color: var(--primary-strong);
+    font-weight: 600;
+    border-left-color: var(--primary);
+  }
+  .sidebar-empty {
+    padding: 20px 12px;
+    font-size: 13px;
+    color: var(--text-3);
+    text-align: center;
+  }
+
+  /* ===== 内容区 ===== */
+  .content {
+    min-width: 0;
+    background: var(--bg);
+    border-right: 1px solid var(--border);
+    min-height: calc(100vh - var(--topbar-h));
+  }
+  .doc { max-width: 760px; margin: 0 auto; padding: 40px 48px 80px; }
+
+  .crumbs {
+    font-size: 12.5px;
+    color: var(--text-3);
+    margin-bottom: 14px;
+  }
+  .crumbs span { color: var(--text-2); }
+  .doc-title {
+    font-size: 30px;
+    line-height: 1.3;
+    margin: 0 0 10px;
+    letter-spacing: -.01em;
+  }
+  .doc-meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 12.5px;
+    color: var(--text-3);
+    padding-bottom: 22px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+  }
+  .doc-meta .tag {
+    background: var(--primary-weak);
+    color: var(--primary-strong);
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11.5px;
+  }
+
+  /* 问题小节卡片 */
+  .qa {
+    padding: 30px 0 34px;
+    border-bottom: 1px solid var(--border);
+    scroll-margin-top: calc(var(--topbar-h) + 24px);
+  }
+  .qa:last-of-type { border-bottom: none; }
+  .qa-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+  .qa-num {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary);
+    flex: none;
+    padding-top: 3px;
+  }
+  .qa-title { font-size: 20px; font-weight: 650; margin: 0; line-height: 1.4; }
+  .qa-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .03em;
+    color: var(--text-3);
+    margin: 18px 0 8px;
+    text-transform: uppercase;
+  }
+  .qa p { margin: 0 0 12px; color: #374151; font-size: 15px; }
+  .qa ul { margin: 0 0 14px; padding-left: 20px; }
+  .qa li { margin: 5px 0; color: #374151; font-size: 14.5px; }
+  .qa .placeholder {
+    background: var(--bg-soft);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    color: var(--text-3);
+    font-size: 13px;
+  }
+  .qa code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+
+  /* 上一篇 / 下一篇 */
+  .pager {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 40px;
+  }
+  .pager a {
+    display: block;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    color: var(--text);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .pager a:hover { border-color: var(--primary); box-shadow: var(--shadow-sm); }
+  .pager .dir { font-size: 11.5px; color: var(--text-3); display: block; margin-bottom: 4px; }
+  .pager .ttl { font-size: 13.5px; font-weight: 600; }
+  .pager a.next { text-align: right; }
+  .pager a.empty { visibility: hidden; }
+
+  /* ===== 右侧 TOC ===== */
+  .toc {
+    position: sticky;
+    top: var(--topbar-h);
+    height: calc(100vh - var(--topbar-h));
+    overflow-y: auto;
+    padding: 22px 16px 40px;
+    background: transparent;
+  }
+  .toc-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .03em;
+    color: var(--text-3);
+    margin: 0 0 12px;
+  }
+  .toc-list { list-style: none; margin: 0; padding: 0; }
+  .toc-list a {
+    display: block;
+    padding: 5px 0 5px 12px;
+    border-left: 2px solid var(--border);
+    font-size: 12.5px;
+    color: var(--text-2);
+    line-height: 1.4;
+  }
+  .toc-list a:hover { color: var(--text); }
+  .toc-list a.active {
+    color: var(--primary-strong);
+    border-left-color: var(--primary);
+    font-weight: 600;
+  }
+
+  /* ===== 移动端 ===== */
+  @media (max-width: 1080px) {
+    .layout { grid-template-columns: var(--sidebar-w) minmax(0, 1fr); }
+    .toc { display: none; }
+  }
+  @media (max-width: 820px) {
+    .menu-btn { display: inline-flex; align-items: center; justify-content: center; }
+    .layout { grid-template-columns: minmax(0, 1fr); }
+    .sidebar {
+      position: fixed;
+      left: 0; top: var(--topbar-h);
+      height: calc(100vh - var(--topbar-h));
+      width: min(82vw, 320px);
+      transform: translateX(-100%);
+      transition: transform .22s ease;
+      box-shadow: var(--shadow-md);
+      z-index: 40;
+    }
+    .sidebar.open { transform: translateX(0); }
+    .doc { padding: 28px 20px 64px; }
+    .search { display: none; }
+  }
+  .backdrop {
+    display: none;
+    position: fixed; inset: var(--topbar-h) 0 0 0;
+    background: rgba(15, 23, 42, .32);
+    z-index: 35;
+  }
+  .backdrop.show { display: block; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <button class="menu-btn" id="menuBtn" aria-label="打开目录">☰</button>
+  <a class="brand" href="#">
+    <span class="brand-mark">AI</span>
+    AI Agent 面试指南
+  </a>
+  <div class="search">
+    <span class="ico">🔍</span>
+    <input id="searchInput" type="text" placeholder="搜索问题、知识点或面经…" />
+    <kbd>⌘K</kbd>
+  </div>
+  <div class="top-actions">
+    <button class="btn">打赏</button>
+    <button class="btn btn-primary">付费咨询</button>
+  </div>
+</header>
+
+<div class="progress"><i id="progressBar"></i></div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <span>学习目录</span>
+      <span id="docCount"></span>
+    </div>
+    <ul class="tree" id="tree"></ul>
+  </aside>
+
+  <main class="content">
+    <article class="doc" id="doc"></article>
+  </main>
+
+  <aside class="toc">
+    <p class="toc-title">本页目录</p>
+    <ul class="toc-list" id="tocList"></ul>
+  </aside>
+</div>
+
+<div class="backdrop" id="backdrop"></div>
+
+<script>
+/* ============ 占位数据：目录树 ============ */
+const TREE = [
+  {
+    code: 'ai', name: 'AI',
+    categories: [
+      {
+        code: 'ai-agent', name: 'Agent 知识',
+        docs: [
+          { id: 'agent-core', title: 'Agent 核心概念' },
+          { id: 'agent-memory', title: '记忆（Memory）设计' },
+          { id: 'agent-tool', title: '工具调用（Tool Use）' },
+          { id: 'agent-eval', title: 'Agent 评测（Eval）' },
+        ],
+      },
+    ],
+  },
+  {
+    code: 'backend', name: '后端基础知识',
+    categories: [
+      { code: 'java', name: 'Java 基础', docs: [{ id: 'java-basic', title: 'Java 基础问题集' }] },
+      { code: 'redis', name: 'Redis', docs: [{ id: 'redis-core', title: 'Redis 核心问题集' }] },
+      { code: 'mq', name: '消息队列', docs: [{ id: 'mq-core', title: '消息队列问题集' }] },
+      { code: 'sysdesign', name: '系统设计', docs: [{ id: 'sysdesign', title: '系统设计题集' }] },
+    ],
+  },
+  {
+    code: 'interview', name: '面试记录',
+    categories: [
+      { code: 'bytedance', name: '字节跳动', docs: [{ id: 'bytedance', title: '字节跳动面经' }] },
+      { code: 'alibaba', name: '阿里', docs: [{ id: 'alibaba', title: '阿里面经' }] },
+      { code: 'tencent', name: '腾讯', docs: [{ id: 'tencent', title: '腾讯面经' }] },
+    ],
+  },
+  {
+    code: 'resume', name: '简历优化',
+    categories: [
+      { code: 'resume-cv', name: '简历写作', docs: [{ id: 'resume', title: '简历写作指南' }] },
+    ],
+  },
+];
+
+/* ============ 占位数据：文档内容流 ============ */
+function qa(num, title, body) {
+  return { num, title, body };
+}
+
+const DOCS = {
+  'agent-core': {
+    title: 'Agent 核心概念',
+    crumb: 'AI / Agent 知识',
+    tag: 'AI',
+    meta: '更新于 2026-09-01 · 共 5 个问题',
+    prev: null,
+    next: 'agent-memory',
+    sections: [
+      qa('01', 'AI Agent 是什么？和普通 Chatbot 有什么区别？', `
+        <div class="qa-label">考察点</div>
+        <ul>
+          <li>是否理解 Chatbot 是单轮问答、Agent 是系统工程这一本质差异</li>
+          <li>能否讲清 Agent 相比 Chatbot 的能力增量</li>
+          <li>是否意识到这些能力伴随的错误累积、成本与延迟等工程代价</li>
+        </ul>
+        <div class="qa-label">标准答案</div>
+        <p>Chatbot 是单轮问答：输入一段话、输出一段话，价值上限是「告诉你怎么做」。Agent 是围绕大模型构建的系统工程，包含上下文构建、记忆管理、工具调用等核心能力，核心是一个「规划 → 决策 → 执行 → 观察 → 再决策」的循环，直到完成复杂任务。</p>
+      `),
+      qa('02', 'Agent 与 Workflow（工作流）的边界在哪里？', `
+        <div class="qa-label">考察点</div>
+        <ul>
+          <li>能否区分「固定流程编排」与「LLM 自主决策」</li>
+          <li>是否理解何时该用 Workflow、何时该用 Agent</li>
+        </ul>
+        <div class="qa-label">标准答案</div>
+        <p>Workflow 是预先定义好的固定流程，每一步做什么是确定的；Agent 的路径由模型在执行时动态决定。工程上能用确定性 Workflow 解决的，不应过度使用 Agent——可预测、成本低、易排查。</p>
+      `),
+      qa('03', '一个生产级 Agent 通常由哪些模块组成？', `
+        <div class="qa-label">考察点</div>
+        <ul>
+          <li>能否画出 Agent 的系统框图</li>
+          <li>是否覆盖记忆、工具、评测、安全、观测等非功能模块</li>
+        </ul>
+        <div class="qa-label">标准答案</div>
+        <p>典型模块包括：上下文构建、记忆管理（短期/长期）、工具白名单与调用、任务编排、评测（Eval）、安全审查、异常重试、可观测性（日志/追踪/成本统计）。</p>
+      `),
+      qa('04', 'Agent 的上下文窗口有限，如何设计上下文管理？', `
+        <div class="qa-label">考察点</div>
+        <ul>
+          <li>是否了解上下文压缩、摘要、检索式注入等手段</li>
+        </ul>
+        <div class="qa-label">标准答案</div>
+        <p>通过「当前任务相关片段 + 历史摘要 + 长期记忆检索」的分层策略控制上下文规模，避免把无关历史全部塞入窗口导致注意力稀释与成本上升。</p>
+      `),
+      qa('05', 'Agent 落地时最常见的工程陷阱有哪些？', `
+        <div class="qa-label">考察点</div>
+        <ul>
+          <li>错误多步累积、工具副作用、成本与延迟失控、评测缺失</li>
+        </ul>
+        <div class="qa-label">标准答案</div>
+        <p>常见陷阱：错误在多步循环中累积放大；工具调用产生真实副作用且难以回滚；缺乏评测导致「看起来能用」但无法回归；成本与延迟随步数线性增长。</p>
+      `),
+    ],
+  },
+  'agent-memory': {
+    title: '记忆（Memory）设计',
+    crumb: 'AI / Agent 知识',
+    tag: 'AI',
+    meta: '更新于 2026-09-01 · 共 3 个问题',
+    prev: 'agent-core',
+    next: 'agent-tool',
+    sections: [
+      qa('01', '短期记忆与长期记忆分别解决什么问题？', `<p>短期记忆承载单次任务会话内的上下文；长期记忆沉淀跨会话的、可复用的用户偏好与事实。二者通过不同的存储与检索策略实现。</p>`),
+      qa('02', '长期记忆如何存储与召回？', `<p>通常采用「向量检索 + 结构化元数据过滤」的方式：写入时抽取并向量化关键事实，召回时按相关性与时效性排序，配合摘要机制控制规模。</p>`),
+      qa('03', '记忆的遗忘与冲突如何处理？', `<div class="placeholder">（占位内容，待填充）</div>`),
+    ],
+  },
+  'agent-tool': {
+    title: '工具调用（Tool Use）',
+    crumb: 'AI / Agent 知识',
+    tag: 'AI',
+    meta: '更新于 2026-09-01 · 共 3 个问题',
+    prev: 'agent-memory',
+    next: 'agent-eval',
+    sections: [
+      qa('01', '什么是 Function Calling？', `<p>模型根据工具 schema 输出结构化的调用参数，由运行时执行并回填结果，再进入下一轮推理。</p>`),
+      qa('02', '如何保证工具调用的安全？', `<div class="placeholder">（占位内容，待填充）</div>`),
+      qa('03', '工具调用失败如何重试与降级？', `<div class="placeholder">（占位内容，待填充）</div>`),
+    ],
+  },
+  'agent-eval': {
+    title: 'Agent 评测（Eval）',
+    crumb: 'AI / Agent 知识',
+    tag: 'AI',
+    meta: '更新于 2026-09-01 · 共 2 个问题',
+    prev: 'agent-tool',
+    next: 'java-basic',
+    sections: [
+      qa('01', '为什么要给 Agent 建评测体系？', `<p>Agent 是非确定系统，缺少评测就无法回归、无法判断「改了一处是否变差」。评测是 Agent 可维护性的前提。</p>`),
+      qa('02', '评测的常用方法有哪些？', `<div class="placeholder">（占位内容，待填充）</div>`),
+    ],
+  },
+
+  'java-basic': {
+    title: 'Java 基础问题集',
+    crumb: '后端基础知识 / Java 基础',
+    tag: 'Java',
+    meta: '更新于 2026-08-28 · 共 2 个问题',
+    prev: 'agent-eval',
+    next: 'redis-core',
+    sections: [
+      qa('01', 'String、StringBuilder、StringBuffer 的区别？', `<p>String 不可变；StringBuilder 可变且非线程安全；StringBuffer 可变且方法加锁线程安全。性能上 StringBuilder 更优。</p>`),
+      qa('02', 'HashMap 的底层原理？', `<div class="placeholder">（占位内容，待填充）</div>`),
+    ],
+  },
+  'redis-core': {
+    title: 'Redis 核心问题集',
+    crumb: '后端基础知识 / Redis',
+    tag: 'Redis',
+    meta: '更新于 2026-08-28 · 共 4 个问题',
+    prev: 'java-basic',
+    next: 'mq-core',
+    sections: [
+      qa('01', 'Redis 为什么这么快？', `
+        <div class="qa-label">考察点</div>
+        <ul>
+          <li>纯内存操作、单线程避免锁竞争、IO 多路复用、高效数据结构</li>
+        </ul>
+        <div class="qa-label">标准答案</div>
+        <p>核心原因：数据在内存中读写；单线程模型避免上下文切换与锁竞争；基于 epoll 的 IO 多路复用支撑高并发连接；针对常见场景设计了紧凑高效的数据结构。</p>
+      `),
+      qa('02', 'Redis 持久化 RDB 与 AOF 的区别？', `<p>RDB 是定时快照，恢复快但可能丢失最近数据；AOF 记录写命令，数据更完整但体积更大、恢复较慢。生产常混合使用。</p>`),
+      qa('03', '缓存穿透 / 击穿 / 雪崩分别怎么解决？', `
+        <ul>
+          <li><code>穿透</code>：布隆过滤器 + 缓存空值</li>
+          <li><code>击穿</code>：热点 key 加锁 + 逻辑过期</li>
+          <li><code>雪崩</code>：过期时间加随机抖动 + 多级缓存 + 限流</li>
+        </ul>
+      `),
+      qa('04', 'Redis 分布式锁如何实现？', `<div class="placeholder">（占位内容，待填充）</div>`),
+    ],
+  },
+  'mq-core': {
+    title: '消息队列问题集',
+    crumb: '后端基础知识 / 消息队列',
+    tag: 'MQ',
+    meta: '更新于 2026-08-28 · 共 2 个问题',
+    prev: 'redis-core',
+    next: 'sysdesign',
+    sections: [
+      qa('01', '消息队列解决了什么问题？', `<p>削峰填谷、解耦、异步化、最终一致性。同时引入消息丢失、重复消费、顺序性等新问题。</p>`),
+      qa('02', '如何保证消息不丢、不重复？', `<div class="placeholder">（占位内容，待填充）</div>`),
+    ],
+  },
+  'sysdesign': {
+    title: '系统设计题集',
+    crumb: '后端基础知识 / 系统设计',
+    tag: '系统设计',
+    meta: '更新于 2026-08-28 · 共 1 个问题',
+    prev: 'mq-core',
+    next: 'bytedance',
+    sections: [
+      qa('01', '如何设计一个短链系统？', `<div class="placeholder">（占位内容，待填充）</div>`),
+    ],
+  },
+
+  'bytedance': {
+    title: '字节跳动面经',
+    crumb: '面试记录 / 字节跳动',
+    tag: '面经',
+    meta: '更新于 2026-08-27 · 共 3 轮',
+    prev: 'sysdesign',
+    next: 'alibaba',
+    sections: [
+      qa('01', '一面：项目深挖 + 算法', `<p>围绕简历项目追问实现细节、难点与取舍，随后手写一道算法题（占位：具体题目待补充）。</p>`),
+      qa('02', '二面：系统设计', `<p>给出一个业务场景做系统设计，重点考察需求澄清、容量估算、数据建模与扩展性。</p>`),
+      qa('03', '三面：HR 面', `<div class="placeholder">（占位内容，待填充）</div>`),
+    ],
+  },
+  'alibaba': {
+    title: '阿里面经',
+    crumb: '面试记录 / 阿里',
+    tag: '面经',
+    meta: '更新于 2026-08-26 · 共 2 轮',
+    prev: 'bytedance',
+    next: 'tencent',
+    sections: [
+      qa('01', '一面：Java 基础 + 场景题', `<div class="placeholder">（占位内容，待填充）</div>`),
+      qa('02', '二面：项目 + 系统设计', `<div class="placeholder">（占位内容，待填充）</div>`),
+    ],
+  },
+  'tencent': {
+    title: '腾讯面经',
+    crumb: '面试记录 / 腾讯',
+    tag: '面经',
+    meta: '更新于 2026-08-25 · 共 2 轮',
+    prev: 'alibaba',
+    next: 'resume',
+    sections: [
+      qa('01', '一面：技术面', `<div class="placeholder">（占位内容，待填充）</div>`),
+      qa('02', '二面：综合面', `<div class="placeholder">（占位内容，待填充）</div>`),
+    ],
+  },
+
+  'resume': {
+    title: '简历写作指南',
+    crumb: '简历优化 / 简历写作',
+    tag: '简历',
+    meta: '更新于 2026-08-24 · 共 2 个问题',
+    prev: 'tencent',
+    next: null,
+    sections: [
+      qa('01', '如何用 STAR 法则写项目经历？', `<p>用「情境 → 任务 → 行动 → 结果」四要素，量化结果，突出个人贡献而非团队职责。</p>`),
+      qa('02', '简历常见的减分项有哪些？', `<div class="placeholder">（占位内容，待填充）</div>`),
+    ],
+  },
+};
+
+/* ============ 渲染 ============ */
+const treeEl = document.getElementById('tree');
+const docEl = document.getElementById('doc');
+const tocEl = document.getElementById('tocList');
+const docCountEl = document.getElementById('docCount');
+const sidebarEl = document.getElementById('sidebar');
+const backdropEl = document.getElementById('backdrop');
+const menuBtn = document.getElementById('menuBtn');
+const searchInput = document.getElementById('searchInput');
+const progressBar = document.getElementById('progressBar');
+
+let activeDocId = 'agent-core';
+let collapsedGroups = new Set();
+let collapsedCategories = new Set();
+
+function renderTree() {
+  treeEl.innerHTML = '';
+  const q = searchInput.value.trim().toLowerCase();
+
+  TREE.forEach((group) => {
+    const li = document.createElement('li');
+    li.className = 'group' + (collapsedGroups.has(group.code) ? ' collapsed' : '');
+
+    const toggle = document.createElement('button');
+    toggle.className = 'group-toggle';
+    toggle.innerHTML = `<span>${group.name}</span><span class="arrow">▼</span>`;
+    toggle.onclick = () => {
+      if (collapsedGroups.has(group.code)) collapsedGroups.delete(group.code);
+      else collapsedGroups.add(group.code);
+      renderTree();
+    };
+
+    const body = document.createElement('div');
+    body.className = 'group-body';
+
+    group.categories.forEach((cat) => {
+      const catLi = document.createElement('div');
+      catLi.className = 'category' + (collapsedCategories.has(cat.code) ? ' collapsed' : '');
+
+      const catToggle = document.createElement('button');
+      catToggle.className = 'category-toggle';
+      catToggle.innerHTML = `<span>${cat.name}</span><span class="arrow">▼</span>`;
+      catToggle.onclick = () => {
+        if (collapsedCategories.has(cat.code)) collapsedCategories.delete(cat.code);
+        else collapsedCategories.add(cat.code);
+        renderTree();
+      };
+
+      const list = document.createElement('ul');
+      list.className = 'doc-list';
+
+      cat.docs.forEach((doc) => {
+        const d = DOCS[doc.id];
+        const hay = (doc.title + ' ' + group.name + ' ' + cat.name).toLowerCase();
+        if (q && !hay.includes(q)) return;
+
+        const item = document.createElement('li');
+        item.className = 'doc-item';
+        const a = document.createElement('a');
+        a.href = '#';
+        a.textContent = doc.title;
+        if (doc.id === activeDocId) a.className = 'active';
+        a.onclick = (e) => { e.preventDefault(); setActiveDoc(doc.id); closeSidebar(); };
+        item.appendChild(a);
+        list.appendChild(item);
+      });
+
+      if (list.children.length === 0) return;
+
+      catLi.appendChild(catToggle);
+      catLi.appendChild(list);
+      body.appendChild(catLi);
+    });
+
+    li.appendChild(toggle);
+    li.appendChild(body);
+    treeEl.appendChild(li);
+  });
+}
+
+function setActiveDoc(id) {
+  activeDocId = id;
+  renderTree();
+  renderDoc(id);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderDoc(id) {
+  const d = DOCS[id];
+  docCountEl.textContent = '';
+
+  const crumbs = document.createElement('div');
+  crumbs.className = 'crumbs';
+  crumbs.innerHTML = `<span>${d.crumb}</span>`;
+
+  const title = document.createElement('h1');
+  title.className = 'doc-title';
+  title.textContent = d.title;
+
+  const meta = document.createElement('div');
+  meta.className = 'doc-meta';
+  meta.innerHTML = `<span class="tag">${d.tag}</span><span>${d.meta}</span>`;
+
+  docEl.innerHTML = '';
+  docEl.appendChild(crumbs);
+  docEl.appendChild(title);
+  docEl.appendChild(meta);
+
+  d.sections.forEach((s) => {
+    const sec = document.createElement('section');
+    sec.className = 'qa';
+    sec.id = 'sec-' + s.num;
+
+    const head = document.createElement('div');
+    head.className = 'qa-head';
+    head.innerHTML = `<span class="qa-num">${s.num}</span><h2 class="qa-title">${s.title}</h2>`;
+
+    const body = document.createElement('div');
+    body.innerHTML = s.body;
+
+    sec.appendChild(head);
+    sec.appendChild(body);
+    docEl.appendChild(sec);
+  });
+
+  const pager = document.createElement('nav');
+  pager.className = 'pager';
+
+  const prev = document.createElement('a');
+  prev.href = '#';
+  if (d.prev) {
+    prev.innerHTML = `<span class="dir">上一篇</span><span class="ttl">${DOCS[d.prev].title}</span>`;
+    prev.onclick = (e) => { e.preventDefault(); setActiveDoc(d.prev); };
+  } else {
+    prev.className = 'empty';
+  }
+
+  const next = document.createElement('a');
+  next.href = '#';
+  next.className = 'next';
+  if (d.next) {
+    next.innerHTML = `<span class="dir">下一篇</span><span class="ttl">${DOCS[d.next].title}</span>`;
+    next.onclick = (e) => { e.preventDefault(); setActiveDoc(d.next); };
+  } else {
+    next.className = 'empty';
+  }
+
+  pager.appendChild(prev);
+  pager.appendChild(next);
+  docEl.appendChild(pager);
+
+  renderToc(d);
+}
+
+function renderToc(d) {
+  tocEl.innerHTML = '';
+  d.sections.forEach((s) => {
+    const a = document.createElement('a');
+    a.href = '#sec-' + s.num;
+    a.textContent = s.title;
+    a.onclick = (e) => {
+      e.preventDefault();
+      document.getElementById('sec-' + s.num).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    tocEl.appendChild(a);
+  });
+}
+
+/* ============ 交互：搜索、滚动高亮、进度、移动端 ============ */
+searchInput.addEventListener('input', () => {
+  TREE.forEach((g) => collapsedGroups.delete(g.code));
+  TREE.forEach((g) => g.categories.forEach((c) => collapsedCategories.delete(c.code)));
+  renderTree();
+});
+
+let activeSection = '';
+const sectionObserver = new IntersectionObserver((entries) => {
+  entries.forEach((e) => {
+    if (e.isIntersecting) {
+      activeSection = e.target.id;
+      highlightToc();
+      highlightProgress();
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+
+function observeSections() {
+  document.querySelectorAll('.qa').forEach((s) => sectionObserver.observe(s));
+}
+
+function highlightToc() {
+  tocEl.querySelectorAll('a').forEach((a) => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + activeSection);
+  });
+}
+
+function highlightProgress() {
+  const secs = Array.from(document.querySelectorAll('.qa'));
+  if (!secs.length) return;
+  const idx = secs.findIndex((s) => s.id === activeSection);
+  const pct = (idx + 1) / secs.length * 100;
+  progressBar.style.width = pct + '%';
+}
+
+window.addEventListener('scroll', () => {
+  const doc = document.documentElement;
+  const max = doc.scrollHeight - doc.clientHeight;
+  const pct = max > 0 ? (doc.scrollTop / max) * 100 : 0;
+  // 进度条由“章节位置”驱动（highlightProgress），此处保留滚动兜底
+}, { passive: true });
+
+function closeSidebar() {
+  sidebarEl.classList.remove('open');
+  backdropEl.classList.remove('show');
+}
+menuBtn.addEventListener('click', () => {
+  sidebarEl.classList.toggle('open');
+  backdropEl.classList.toggle('show');
+});
+backdropEl.addEventListener('click', closeSidebar);
+
+/* 快捷键 ⌘K 聚焦搜索 */
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    searchInput.focus();
+  }
+});
+
+/* ============ 初始化 ============ */
+renderTree();
+renderDoc(activeDocId);
+observeSections();
+</script>
+</body>
+</html>

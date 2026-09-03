@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiguide.content.mapper.LikeMapper">
+    <!--
+        点赞与计数更新放在同一个数据修改 CTE 中：
+        插入成功才递增 like_count，冲突则直接返回当前值，保证服务层幂等。
+        所有动态值均使用 #{} 参数化，禁止拼接用户输入。
+    -->
+    <select id="insertLike" resultType="int">
+        WITH inserted AS (
+            INSERT INTO content_like (content_id, visitor_id)
+            SELECT c.id, #{visitorId}
+            FROM content c
+            WHERE c.code = #{contentCode}
+              AND c.status = 'published'
+            ON CONFLICT (content_id, visitor_id) DO NOTHING
+            RETURNING content_id
+        ),
+        updated AS (
+            UPDATE content
+            SET like_count = like_count + 1
+            WHERE code = #{contentCode}
+              AND status = 'published'
+              AND EXISTS (SELECT 1 FROM inserted)
+            RETURNING like_count
+        )
+        SELECT COALESCE(
+                   (SELECT like_count FROM updated),
+                   (SELECT like_count FROM content WHERE code = #{contentCode} AND status = 'published'),
+                   0
+               ) AS like_count
+    </select>
+
+    <select id="countLike" resultType="int">
+        SELECT COALESCE(MAX(like_count), 0)
+        FROM content
+        WHERE code = #{contentCode}
+          AND status = 'published'
+    </select>
+</mapper>

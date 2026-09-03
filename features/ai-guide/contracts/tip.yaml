@@ -1,0 +1,58 @@
+# 接口契约：打赏订单（tip）
+# 格式依据：.specc/platform/api-conventions.md 第 5 节
+# 效力：契约是前后端唯一真相源；implement 阶段禁止私改（宪法 4.3）
+# 门禁检查：四要素（统一响应体/错误码/认证/分页）缺一即失败
+# 通用错误码/统一响应体/分页唯一源见 contracts/common.yaml，此处不复制其内容
+# 分页约定（pageNum/pageSize/orderBy）唯一源见 contracts/common.yaml；本模块无列表接口
+
+module: 打赏订单
+error-code-range: 2100-2199
+base-path: /api/tips
+auth: JWT Bearer
+
+endpoints:
+  - method: POST
+    path: /
+    summary: 创建打赏留资单（加管理员微信线下收款）
+    auth: 公开（鉴权白名单）
+    audience: web-reader
+    request:
+      headers:
+        - { field: X-Visitor-Id, type: string, required: false, validate: "长度 8-64" }
+      body:
+        - { field: contentCode, type: string, required: false, validate: "长度 1-64；可空表示不关联具体内容" }
+        - { field: amount, type: int, required: true, validate: "单位为分；必须属于 10/100/500/1000/5000/10000" }
+        - { field: contactName, type: string, required: false, validate: "长度 0-50" }
+        - { field: contactValue, type: string, required: false, validate: "长度 0-100；填写时须通过联系方式格式校验" }
+        - { field: message, type: string, required: false, validate: "长度 0-500；按隐私保密处理" }
+    response:
+      data:
+        - { field: orderNo, type: string }
+        - { field: amountCents, type: int }
+        - { field: status, type: string, desc: "submitted" }
+        - { field: wechatId, type: string, desc: "管理员微信号，供访客加微信完成支付" }
+    error-codes: [1000, 1004, 2100, 2105]
+
+  - method: GET
+    path: /{orderNo}
+    summary: 查询打赏留资单状态与管理员微信号
+    auth: 公开（鉴权白名单；orderNo 为不可猜测随机值）
+    audience: web-reader
+    request:
+      path:
+        - { field: orderNo, type: string, required: true, validate: "长度 1-40" }
+    response:
+      data:
+        - { field: orderNo, type: string }
+        - { field: amountCents, type: int }
+        - { field: status, type: string, desc: "submitted/received/closed" }
+        - { field: wechatId, type: string }
+        - { field: receivedAt, type: string, desc: "ISO-8601 UTC；未收款为 null" }
+    error-codes: [1000, 1004, 2101]
+
+# ---- 错误码表（四要素之一）----
+error-code-table:
+  - { code: 2100, meaning: 打赏金额不在预设枚举档位, user-text: 请选择合法的打赏金额 }
+  - { code: 2101, meaning: 打赏订单不存在, user-text: 订单不存在或已失效 }
+  - { code: 2103, meaning: 打赏订单状态不允许当前操作, user-text: 当前订单状态不支持该操作 }
+  - { code: 2105, meaning: 联系方式格式非法, user-text: 请填写正确的手机号或微信 }

@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiguide.order.mapper.ConsultationOrderMapper">
+    <resultMap id="ConsultationStatusViewMap" type="com.aiguide.order.dto.ConsultationStatusView">
+        <constructor>
+            <arg column="order_no" javaType="string"/>
+            <arg column="price_cents" javaType="java.lang.Integer"/>
+            <arg column="free_quota_used" javaType="_boolean"/>
+            <arg column="status" javaType="string"/>
+            <arg column="wechat_id" javaType="string"/>
+            <arg column="confirmed_at" javaType="string"/>
+        </constructor>
+    </resultMap>
+
+    <!--
+        创建咨询订单。价格固定为 50000 分，最终是否免费由管理员确认排期时判定；
+        status/free_quota_used 依赖数据库默认值，所有动态值均使用 #{} 参数化。
+    -->
+    <insert id="insertConsultationOrder">
+        INSERT INTO consultation_order (
+            order_no,
+            contact_name,
+            contact_type,
+            contact_value,
+            topic_text,
+            request_text,
+            expected_time,
+            price_cents,
+            status
+        )
+        VALUES (
+            #{orderNo},
+            #{contactName},
+            #{contactType},
+            #{contactValue},
+            #{topicText},
+            #{requestText},
+            CAST(#{expectedTime} AS TIMESTAMPTZ),
+            #{priceCents},
+            'submitted'
+        )
+    </insert>
+
+    <!-- 公开查询只返回订单号、价格、免费名额、状态与确认时间；管理员微信号由服务层从配置注入。 -->
+    <select id="selectStatusByOrderNo" resultMap="ConsultationStatusViewMap">
+        SELECT order_no,
+               price_cents,
+               free_quota_used,
+               status,
+               NULL AS wechat_id,
+               TO_CHAR(confirmed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS confirmed_at
+        FROM consultation_order
+        WHERE order_no = #{orderNo}
+    </select>
+
+    <resultMap id="AdminConsultationListViewMap" type="com.aiguide.admin.dto.AdminViews$ConsultationListView">
+        <constructor>
+            <arg column="order_no" javaType="string"/>
+            <arg column="contact_name" javaType="string"/>
+            <arg column="contact_value" javaType="string"/>
+            <arg column="topic_text" javaType="string"/>
+            <arg column="price_cents" javaType="java.lang.Integer"/>
+            <arg column="status" javaType="string"/>
+            <arg column="created_at" javaType="string"/>
+        </constructor>
+    </resultMap>
+
+    <resultMap id="AdminConsultationDetailViewMap" type="com.aiguide.admin.dto.AdminViews$ConsultationDetailView">
+        <constructor>
+            <arg column="order_no" javaType="string"/>
+            <arg column="contact_name" javaType="string"/>
+            <arg column="contact_type" javaType="string"/>
+            <arg column="contact_value" javaType="string"/>
+            <arg column="topic_text" javaType="string"/>
+            <arg column="request_text" javaType="string"/>
+            <arg column="expected_time" javaType="string"/>
+            <arg column="price_cents" javaType="java.lang.Integer"/>
+            <arg column="free_quota_used" javaType="_boolean"/>
+            <arg column="status" javaType="string"/>
+            <arg column="admin_note" javaType="string"/>
+            <arg column="confirmed_at" javaType="string"/>
+            <arg column="created_at" javaType="string"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="AdminConsultationWhere">
+        <where>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (order_no ILIKE CONCAT('%', #{keyword}, '%')
+                     OR contact_name ILIKE CONCAT('%', #{keyword}, '%')
+                     OR contact_value ILIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectAdminConsultations" resultMap="AdminConsultationListViewMap">
+        SELECT order_no,
+               contact_name,
+               contact_value,
+               topic_text,
+               price_cents,
+               status,
+               TO_CHAR(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at
+        FROM consultation_order
+        <include refid="AdminConsultationWhere"/>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countAdminConsultations" resultType="long">
+        SELECT COUNT(*)
+        FROM consultation_order
+        <include refid="AdminConsultationWhere"/>
+    </select>
+
+    <select id="selectAdminConsultationByOrderNo" resultMap="AdminConsultationDetailViewMap">
+        SELECT order_no,
+               contact_name,
+               contact_type,
+               contact_value,
+               topic_text,
+               request_text,
+               TO_CHAR(expected_time AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS expected_time,
+               price_cents,
+               free_quota_used,
+               status,
+               admin_note,
+               TO_CHAR(confirmed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS confirmed_at,
+               TO_CHAR(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at
+        FROM consultation_order
+        WHERE order_no = #{orderNo}
+    </select>
+
+    <select id="selectConsultationStatus" resultType="string">
+        SELECT status FROM consultation_order WHERE order_no = #{orderNo}
+    </select>
+
+    <select id="selectUsedCountForUpdate" resultType="int">
+        SELECT used_count
+        FROM consultation_quota
+        WHERE id = 1
+        FOR UPDATE
+    </select>
+
+    <update id="incrementConsultationQuota">
+        UPDATE consultation_quota
+        SET used_count = used_count + 1
+        WHERE id = 1
+          AND used_count &lt; 10
+    </update>
+
+    <update id="decrementConsultationQuota">
+        UPDATE consultation_quota
+        SET used_count = GREATEST(used_count - 1, 0)
+        WHERE id = 1
+    </update>
+
+    <update id="confirmConsultation">
+        UPDATE consultation_order
+        SET status = 'confirmed',
+            admin_note = #{adminNote,jdbcType=VARCHAR},
+            price_cents = #{priceCents},
+            free_quota_used = #{freeQuotaUsed},
+            confirmed_at = CURRENT_TIMESTAMP
+        WHERE order_no = #{orderNo}
+          AND status = 'submitted'
+    </update>
+
+    <update id="completeConsultation">
+        UPDATE consultation_order
+        SET status = 'completed',
+            admin_note = #{adminNote,jdbcType=VARCHAR},
+            completed_at = CURRENT_TIMESTAMP
+        WHERE order_no = #{orderNo}
+          AND status = 'confirmed'
+    </update>
+
+    <update id="cancelConsultation">
+        UPDATE consultation_order
+        SET status = 'canceled',
+            admin_note = #{adminNote,jdbcType=VARCHAR},
+            canceled_at = CURRENT_TIMESTAMP
+        WHERE order_no = #{orderNo}
+          AND status IN ('submitted', 'confirmed')
+    </update>
+
+    <update id="updateConsultationNote">
+        UPDATE consultation_order
+        SET admin_note = #{adminNote,jdbcType=VARCHAR}
+        WHERE order_no = #{orderNo}
+    </update>
+</mapper>

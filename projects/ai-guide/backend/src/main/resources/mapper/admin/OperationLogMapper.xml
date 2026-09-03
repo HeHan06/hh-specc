@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiguide.operationlog.OperationLogMapper">
+    <insert id="insert">
+        INSERT INTO operation_log (
+            admin_user_id,
+            action,
+            target_type,
+            target_code,
+            before_state,
+            after_state,
+            detail
+        )
+        VALUES (
+            #{adminUserId},
+            #{action},
+            #{targetType},
+            #{targetCode},
+            #{beforeState,jdbcType=VARCHAR},
+            #{afterState,jdbcType=VARCHAR},
+            CAST(#{detail,jdbcType=VARCHAR} AS JSONB)
+        )
+    </insert>
+
+    <resultMap id="OperationLogViewMap" type="com.aiguide.admin.dto.AdminViews$OperationLogView">
+        <constructor>
+            <arg column="id" javaType="java.lang.Long"/>
+            <arg column="username" javaType="string"/>
+            <arg column="action" javaType="string"/>
+            <arg column="target_type" javaType="string"/>
+            <arg column="target_code" javaType="string"/>
+            <arg column="before_state" javaType="string"/>
+            <arg column="after_state" javaType="string"/>
+            <arg column="created_at" javaType="string"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="OperationLogWhere">
+        <where>
+            <if test="targetType != null and targetType != ''">
+                AND ol.target_type = #{targetType}
+            </if>
+            <if test="action != null and action != ''">
+                AND ol.action = #{action}
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectPage" resultMap="OperationLogViewMap">
+        SELECT ol.id,
+               au.username,
+               ol.action,
+               ol.target_type,
+               ol.target_code,
+               ol.before_state,
+               ol.after_state,
+               TO_CHAR(ol.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at
+        FROM operation_log ol
+        JOIN admin_user au ON au.id = ol.admin_user_id
+        <include refid="OperationLogWhere"/>
+        ORDER BY ol.created_at DESC, ol.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*)
+        FROM operation_log ol
+        JOIN admin_user au ON au.id = ol.admin_user_id
+        <include refid="OperationLogWhere"/>
+    </select>
+</mapper>

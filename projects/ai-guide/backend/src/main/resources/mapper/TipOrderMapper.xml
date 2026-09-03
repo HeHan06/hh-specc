@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiguide.order.mapper.TipOrderMapper">
+    <resultMap id="TipStatusViewMap" type="com.aiguide.order.dto.TipStatusView">
+        <constructor>
+            <arg column="order_no" javaType="string"/>
+            <arg column="amount_cents" javaType="java.lang.Integer"/>
+            <arg column="status" javaType="string"/>
+            <arg column="wechat_id" javaType="string"/>
+            <arg column="received_at" javaType="string"/>
+        </constructor>
+    </resultMap>
+
+    <!--
+        创建留资单。content_id 通过编码查询，内容不存在时留空，避免可选关联触发外键异常；
+        所有用户输入均以 #{} 参数化传入，禁止字符串拼接。
+    -->
+    <insert id="insertTipOrder">
+        INSERT INTO tip_order (
+            order_no,
+            content_id,
+            amount_cents,
+            contact_name,
+            contact_value,
+            message,
+            status
+        )
+        VALUES (
+            #{orderNo},
+            (SELECT id FROM content WHERE code = #{contentCode,jdbcType=VARCHAR}),
+            #{amountCents},
+            #{contactName,jdbcType=VARCHAR},
+            #{contactValue,jdbcType=VARCHAR},
+            #{message,jdbcType=LONGVARCHAR},
+            'submitted'
+        )
+    </insert>
+
+    <!-- 公开查询只返回订单号、金额、状态与收款时间；管理员微信号由服务层从配置注入。 -->
+    <select id="selectStatusByOrderNo" resultMap="TipStatusViewMap">
+        SELECT order_no,
+               amount_cents,
+               status,
+               NULL AS wechat_id,
+               TO_CHAR(received_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS received_at
+        FROM tip_order
+        WHERE order_no = #{orderNo}
+    </select>
+
+    <resultMap id="AdminTipListViewMap" type="com.aiguide.admin.dto.AdminViews$TipListView">
+        <constructor>
+            <arg column="order_no" javaType="string"/>
+            <arg column="content_code" javaType="string"/>
+            <arg column="amount_cents" javaType="java.lang.Integer"/>
+            <arg column="status" javaType="string"/>
+            <arg column="contact_value" javaType="string"/>
+            <arg column="created_at" javaType="string"/>
+        </constructor>
+    </resultMap>
+
+    <resultMap id="AdminTipDetailViewMap" type="com.aiguide.admin.dto.AdminViews$TipDetailView">
+        <constructor>
+            <arg column="order_no" javaType="string"/>
+            <arg column="content_code" javaType="string"/>
+            <arg column="amount_cents" javaType="java.lang.Integer"/>
+            <arg column="contact_name" javaType="string"/>
+            <arg column="contact_value" javaType="string"/>
+            <arg column="message" javaType="string"/>
+            <arg column="status" javaType="string"/>
+            <arg column="received_at" javaType="string"/>
+            <arg column="closed_at" javaType="string"/>
+            <arg column="created_at" javaType="string"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="AdminTipWhere">
+        <where>
+            <if test="status != null and status != ''">
+                AND t.status = #{status}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (t.order_no ILIKE CONCAT('%', #{keyword}, '%')
+                     OR t.contact_value ILIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectAdminTips" resultMap="AdminTipListViewMap">
+        SELECT t.order_no,
+               c.code AS content_code,
+               t.amount_cents,
+               t.status,
+               t.contact_value,
+               TO_CHAR(t.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at
+        FROM tip_order t
+        LEFT JOIN content c ON c.id = t.content_id
+        <include refid="AdminTipWhere"/>
+        ORDER BY t.created_at DESC, t.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countAdminTips" resultType="long">
+        SELECT COUNT(*)
+        FROM tip_order t
+        <include refid="AdminTipWhere"/>
+    </select>
+
+    <select id="selectAdminTipByOrderNo" resultMap="AdminTipDetailViewMap">
+        SELECT t.order_no,
+               c.code AS content_code,
+               t.amount_cents,
+               t.contact_name,
+               t.contact_value,
+               t.message,
+               t.status,
+               TO_CHAR(t.received_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS received_at,
+               TO_CHAR(t.closed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS closed_at,
+               TO_CHAR(t.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at
+        FROM tip_order t
+        LEFT JOIN content c ON c.id = t.content_id
+        WHERE t.order_no = #{orderNo}
+    </select>
+
+    <select id="selectTipStatus" resultType="string">
+        SELECT status FROM tip_order WHERE order_no = #{orderNo}
+    </select>
+
+    <update id="receiveTip">
+        UPDATE tip_order
+        SET status = 'received',
+            received_at = CURRENT_TIMESTAMP
+        WHERE order_no = #{orderNo}
+          AND status = 'submitted'
+    </update>
+
+    <update id="closeTip">
+        UPDATE tip_order
+        SET status = 'closed',
+            closed_at = CURRENT_TIMESTAMP
+        WHERE order_no = #{orderNo}
+          AND status = 'submitted'
+    </update>
+</mapper>

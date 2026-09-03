@@ -1,0 +1,45 @@
+# 接口契约：通用（common）
+# 格式依据：.specc/platform/api-conventions.md 第 5 节
+# 效力：通用错误码/统一响应体/分页格式的唯一源，其它契约按相对路径引用，禁止复制
+# 门禁检查：四要素（统一响应体/错误码/认证/分页）缺一即失败
+
+module: 通用
+error-code-range: 1000-1099
+base-path: /api
+auth: JWT Bearer
+
+# 本文件是通用约束唯一源，不定义业务端点；业务端点见各模块契约。
+endpoints: []
+
+# ---- 统一响应体（所有接口遵守，唯一源）----
+response-envelope:
+  code: int          # 0=成功；非 0=失败（业务失败与传输失败均映射为错误码）
+  message: string    # 面向开发者的说明；面向用户的文案由前端按 code 映射
+  data: object|null  # 业务数据；失败时可为 null
+
+# ---- 认证方式（所有接口遵守）----
+auth-modes:
+  public: 公开（鉴权白名单）
+  login: 需登录
+  admin: 需登录 + ADMIN 角色
+
+# ---- 分页约定（所有列表接口遵守，唯一源）----
+pagination:
+  request:
+    pageNum: { type: int, default: 1, min: 1, desc: 页码，从 1 开始 }
+    pageSize: { type: int, default: 20, min: 1, max: 100, desc: 每页条数；本需求默认 20 }
+    orderBy: { type: string, default: null, desc: "格式 字段,asc|desc；字段白名单在后端校验，禁止透传" }
+  response:
+    data:
+      list: { type: array, desc: 数据列表 }
+      total: { type: int, desc: 总条数 }
+      pageNum: { type: int, desc: 当前页码 }
+      pageSize: { type: int, desc: 每页条数 }
+
+# ---- 通用错误码表（四要素之一）----
+error-code-table:
+  - { code: 1000, meaning: 参数校验失败（类型/长度/边界/枚举不合法）, user-text: 请检查输入内容后重试 }
+  - { code: 1001, meaning: 未登录或登录态失效, user-text: 请先登录后再操作 }
+  - { code: 1002, meaning: 无权限访问当前资源, user-text: 暂无操作权限 }
+  - { code: 1003, meaning: 请求资源不存在, user-text: 资源不存在或已移除 }
+  - { code: 1004, meaning: 系统繁忙或下游服务暂不可用, user-text: 系统繁忙，请稍后重试 }
