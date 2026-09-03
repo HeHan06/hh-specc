@@ -1,8 +1,8 @@
 # specc 平台功能模块架构
 
 > 版本：v0.0.0（已实装）｜ 更新日期：2026-08-26
-> 上游依据：《01-业界Spec流程对标分析》《02-specc流程设计文档》（技术决策已定稿）
-> 状态：**已实现**（七阶段全流程——含需求探询 probe——+ 可观测性 DAG + 多模态输入 + UI 预设库）。下表用 ✅ 标注已落地能力，用 ⏳ 标注 v0.2 规划未实现项。
+> 上游依据：《01-业界Spec流程对标分析》；历史流程设计稿已归档至《../中间过程产物存档/05-specc流程设计文档》（技术决策已定稿）
+> 状态：**已实现**（八阶段全流程——含需求探询 probe 与视觉确认 visual——+ 可观测性 DAG + 多模态输入 + UI 预设库）。下表用 ✅ 标注已落地能力，用 ⏳ 标注 v0.2 规划未实现项。
 
 ---
 
@@ -13,7 +13,7 @@ specc 是一个**领域专属的规范驱动（Spec-Driven）AI Coding 平台**�
 - 面向场景：Web 管理系统 + 微信小程序（双端）
 - 技术栈：React 18 + Vite + Ant Design（Web 后台）｜ Taro（小程序）｜ Java 17 + Spring Boot 3 + MyBatis（后端）｜ PostgreSQL
 - 引擎：Codex Harness，模型按环节可配置（默认 `deepseek-v4-pro` 推理模型；上下文带图时自动切 `deepseek-v4-flash-vision-exp` 视觉多模态，见 M6/M9）
-- 验证：自动化测试（单测 + lint + 契约一致性）+ 跨端可观测 DAG（code-graph）
+- 验证：端到端冒烟（从前端页面入口真实启动后端+前端）+ 契约一致性 + 跨端可观测 DAG（code-graph）
 
 **输入**：一段自然语言需求描述。
 
@@ -87,13 +87,13 @@ specc/                            # = 本仓库
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │          M1 CLI 命令模块（用户入口）        ✅ 全部已实现                    │
-│   init / new(--prd需求文档 · --kb知识库) / status / redo / strip(--apply) /│
+│   init / new(仅建目录) / probe(--prd需求文档 · --kb知识库) / status / redo /│
 │   approve / reject / <stage> / help / --version                          │
 └──────────────────────────────┬──────────────────────────────────────────┘
                                │
 ┌──────────────────────────────▼──────────────────────────────────────────┐
 │                  M2 流程引擎（阶段状态机）       ✅ 已实现                  │
-│   probe→specify→clarify→plan→tasks→implement→verify                       │
+│   probe→specify→clarify→visual→plan→tasks→implement→verify              │
 │   阶段路由 · 前置条件检查 · 断点续跑 · redo 回退 · 异步审批(approve/reject)   │
 └───┬───────────────┬───────────────────┬──────────────────┬──────────────┘
     │               │                   │                  │
@@ -101,7 +101,7 @@ specc/                            # = 本仓库
 │ M3 知识  │   │ M4 模板与   │   │ M5 上下文组装器  │   │ M8 状态与    │
 │ 资产库 ✅ │   │ 提示词系统 ✅│   │ (Assembler) ✅  │   │ 检查点管理 ✅ │
 │ 宪法/平台 │   │ 4产物模板    │   │ 三层知识JIT拼装  │   │ state.json  │
-│ 层(含UI预 │   │ 6阶段指令    │   │ 超阈值告警      │   │ 进度/审计链  │
+│ 层(含UI预 │   │ 8阶段指令    │   │ 超阈值告警      │   │ 进度/审计链  │
 │ 设/契约)  │   │            │   │                │   │             │
 └───┬─────┘   └─────┬──────┘   └────────┬────────┘   └─────────────┘
     │               │                   │
@@ -117,8 +117,9 @@ specc/                            # = 本仓库
                                │ M7 门禁检查系统 ✅ │
                                │ 结构·契约·测试…   │
                                │ (probe/specify/   │
-                               │  clarify/plan/    │
-                               │  tasks/verify)    │
+                               │  clarify/visual/  │
+                               │  plan/tasks/      │
+                               │  verify)          │
                                └────────┬────────┘
                                         │ 全部通过
    ┌────────────────────────────────────┴────────────────────────────────────┐
@@ -131,7 +132,7 @@ specc/                            # = 本仓库
    └────────────────────────────────────┴────────────────────────────────────┘
 ```
 
-> **已实现能力一览**：七阶段全流程（含需求探询 probe）+ 双闸门（自动门禁/人工检查点）；需求材料双轨输入（`--prd` 需求文档进 `requirement.md` 全文注入 / `--kb` 知识库进 `knowledge/` 索引+选读——区分「需求正文」与「参考素材」，`--attach` 已退役）；模型按环节自动切视觉（带图自动用 `model.vision`）；UI 预设库（`ui-presets/` 三种范式，供 plan/implement 锁定视觉）；可观测 DAG（后端 APT + 前端扫描 + 跨端合并，verify 阶段自动生成）；`strip` 交付前剥离（可逆）。
+> **已实现能力一览**：八阶段全流程（含需求探询 probe + 视觉确认 visual）+ 双闸门（自动门禁/人工检查点）；需求材料双轨输入（`probe --prd` 需求文档进 `requirement.md` 全文注入 / `probe --kb` 知识库进 `knowledge/` 索引+选读——区分「需求正文」与「参考素材」，`--attach` 已退役；`new` 仅建目录结构，与描述需求解耦）；模型按环节自动切视觉（带图自动用 `model.vision`）；前端视觉范围由 clarify 阶段模型判定（`frontend-scope.md`，仅涉及新的前端视觉/交互才走 visual）；UI 预设库（`ui-presets/` 三种范式，供 visual/plan/implement 锁定视觉）；可观测 DAG（后端 APT + 前端扫描 + 跨端合并，verify 阶段自动生成）；`strip` 交付前剥离（可逆）。
 >
 > **⏳ 未实现（v0.2 规划）**：`M10 归档与规格库`（`specs/` 与 `specc archive`，依赖版本迭代一并做）；`light/change` 流程裁剪；契约一致性比对增强、安全扫描闸门；多需求并行隔离、知识资产版本化。
 
@@ -146,14 +147,13 @@ specc/                            # = 本仓库
 | 命令 | 功能 | 状态 |
 |---|---|---|
 | `specc init` | 初始化/校验 `.specc/` 资产（宪法/平台层/模板/指令）+ 幂等创建 `features/`、`projects/` 工作目录；业务层知识不预置，由 specify 阶段按需生成 | ✅ |
-| `specc new <需求ID> ["描述"]` | 创建需求工作目录 `features/<需求ID>/`（可携带需求描述，缺省则占位待补齐） | ✅ |
-| `specc new <需求ID> --prd <文件\|目录>` | 创建需求并挂入**需求文档（PRD）**：全文并入 `requirement.md`，作为 specify 的 `{REQUIREMENT_TEXT}` 正文 | ✅ |
-| `specc new <需求ID> --kb <文件\|目录>` | 创建需求并挂入**知识库**：复制进 `knowledge/`，走「索引 + 选读」，不全文灌入 | ✅ |
-| `specc <stage>` | 执行指定阶段（probe/specify/clarify/plan/tasks/implement/verify） | ✅ |
+| `specc new <需求ID>` | 创建需求工作目录 `features/<需求ID>/`（仅建目录结构：contracts/ knowledge/ state.json，不写需求内容） | ✅ |
+| `specc probe <需求ID> ["描述"] [--prd <文件\|目录>] [--kb <文件\|目录>]` | 描述需求并启动探询：`--prd` 全文并入 `requirement.md`（specify 的 `{REQUIREMENT_TEXT}` 正文）；`--kb` 复制进 `knowledge/`（索引 + 选读，不全文灌入） | ✅ |
+| `specc <stage>` | 执行指定阶段（probe/specify/clarify/visual/plan/tasks/implement/verify） | ✅ |
 | `specc status [需求ID]` | 展示当前需求的阶段进度、门禁状态、任务进度、最近审计历史 | ✅ |
 | `specc redo <stage> [需求ID]` | 重跑某阶段（人工修改产物后重置其前后门禁） | ✅ |
 | `specc strip <需求ID> [--apply]` | 剥离可观测性注解/标签（交付前清理，默认预览 diff，`--apply` 才写文件并自动备份） | ✅ |
-| `specc approve <需求ID> [意见]` | 异步审批：通过待人工审查的阶段（probe/specify/plan/verify） | ✅ |
+| `specc approve <需求ID> [意见]` | 异步审批：通过待人工审查的阶段（probe/specify/visual/plan/verify） | ✅ |
 | `specc reject <需求ID> <意见>` | 异步审批：否决并记入审计链 | ✅ |
 | `specc help` | 帮助（`-h` / `--help` 等价） | ✅ |
 | `specc --version` | 版本号（`-v` / `version` 等价，读 `.specc/config.yaml` 的 `app.version`） | ✅ |
@@ -163,7 +163,7 @@ specc/                            # = 本仓库
 
 ### M2 流程引擎（阶段状态机）
 
-**职责**：驱动七阶段线性流程（probe→specify→clarify→plan→tasks→implement→verify），执行"前置条件 → 组装上下文 → 调引擎 → 落盘 → 过门禁"的循环。
+**职责**：驱动八阶段线性流程（probe→specify→clarify→visual→plan→tasks→implement→verify），执行"前置条件 → 组装上下文 → 调引擎 → 落盘 → 过门禁"的循环。
 
 | 子能力 | 说明 |
 |---|---|
@@ -177,20 +177,20 @@ specc/                            # = 本仓库
 
 ### M3 知识资产库
 
-**职责**：承载三层领域知识，是"输出合规代码"的核心资产（详见 02 文档第 5 节）。
+**职责**：承载三层领域知识，是"输出合规代码"的核心资产（详见《../中间过程产物存档/05-specc流程设计文档》第 5 节）。
 
 | 层 | 内容 | 维护方式 |
 |---|---|---|
 | 宪法 `constitution.md` | 技术栈锁定（Java17/SB3/MyBatis/React18/Vite/AntD/Taro/PgSQL）、安全红线、测试标准、流程纪律、小程序合规、单一真相源（§7.6，引用不复制） | 变更需人工审批，版本化 |
 | 平台层 `platform/`（6 文件 + ui-presets） | 技术栈契约 / 双端边界 / 小程序规范 / Web后台规范 / API约定 / **前端架构契约** + **UI 预设库**（dashboard-admin / landing-page / mobile-content-feed） | 双端品类通用，跨项目复用 |
 | 业务层知识（3 文件） | business（术语+角色）/ data-model / flows | **由 specify 阶段从需求描述自动生成**，归档在 `features/<需求ID>/` 下，随需求走，不进 `.specc/` |
-| 需求知识库 `features/<需求ID>/knowledge/` | 用户随 `--kb` 挂入的参考素材（沉淀/题库/范文），仅作上下文参考 | 随需求走；对产物只**引用**不复制 |
+| 需求知识库 `features/<需求ID>/knowledge/` | 用户随 `probe --kb` 挂入的参考素材（沉淀/题库/范文），仅作上下文参考 | 随需求走；对产物只**引用**不复制 |
 
 **设计要点**：
 - 全部为 Markdown，人与 AI 同读
 - 平台层与业务层分离 → 同一框架服务多个业务项目
 - **业务层知识是 specify 的产出物而非全局资产**：一个需求一份，新建需求时随 specify 重新生成，无需替换平台资产
-- **知识库（corpus）是需求级参考源**：由 `--kb` 挂入 `features/<ID>/knowledge/`，specify 时只注入「索引 + 选读文件」，不全文灌入——避免大量沉淀材料稀释需求重点（见 M5）
+- **知识库（corpus）是需求级参考源**：由 `probe --kb` 挂入 `features/<ID>/knowledge/`，specify 时只注入「索引 + 选读文件」，不全文灌入——避免大量沉淀材料稀释需求重点（见 M5）
 - Taro 决策带来的新增规约点：**双端共享策略**（共享组件库/工具函数/类型定义的目录约定）写入 dual-end-boundary.md
 
 ### M4 模板与提示词系统
@@ -200,7 +200,7 @@ specc/                            # = 本仓库
 | 资产 | 数量 | 作用 |
 |---|---|---|
 | 产物模板 `templates/` | 5 个（probe-checklist/spec/plan/tasks/contract） | 产物骨架 + 必填字段 + 示例；spec 模板内置 EARS 五句式与"不做什么"章节；probe-checklist 定义九维需求要素（必填/协作/方案三档） |
-| 阶段指令 `prompts/` | 7 个（每阶段一个，含 probe） | 该阶段的角色设定、输入说明、输出要求、禁止事项、完成判据 |
+| 阶段指令 `prompts/` | 8 个（每阶段一个，含 probe/visual） | 该阶段的角色设定、输入说明、输出要求、禁止事项、完成判据 |
 
 **设计要点**：提示词只写"流程与规则"，领域知识一律由 M5 动态注入——模板保持通用，知识集中管理，避免两处维护。
 
@@ -214,7 +214,7 @@ specc/                            # = 本仓库
 
 | 能力 | 说明 |
 |---|---|
-| 阶段相关性映射 | 内置"阶段 → 平台层文件"映射表（见 02 文档 5 节），plan 阶段全量、其余按需 |
+| 阶段相关性映射 | 内置"阶段 → 平台层文件"映射表（真相源：`lib/assemble.sh` 的 `_platform_files_for_stage`），plan 阶段全量、visual 注入技术栈+前端架构、其余按需 |
 | 产物片段提取 | implement 阶段只注入当前任务相关的 plan 片段，而非整个 plan.md |
 | 知识库选读注入 | probe/specify 阶段若 `knowledge/` 有内容：只注入「`knowledge/.index.md`（标题行摘要索引）+ `selection.md` 已选文件全文」，未建 `selection.md` 时仅给索引；受 `knowledge.max_files` 上限约束。specify 需求输入优先探询沉淀 `probe-answers.md`，原始 `requirement.md` 仅作背景 |
 | Token 预算 | 组装结果超阈值时告警，提示裁剪（对抗长上下文劣化） |
@@ -242,12 +242,14 @@ specc/                            # = 本仓库
 |---|---|---|---|
 | 结构检查 | probe | `probe-questions.md` 已生成非空（探询问题清单已产出） | 脚本扫描 Markdown |
 | 结构检查 | specify | spec 结构（Req-N/不做什么/量化约束）+ 业务层知识三件套齐备非空 | 脚本扫描 Markdown |
-| 结构检查 | clarify | 无 `[NEEDS CLARIFICATION]` 残留 | 脚本扫描 Markdown |
+| 结构检查 | clarify | 无 `[NEEDS CLARIFICATION]` 残留 + `frontend-scope.md` 已判定前端视觉范围 | 脚本扫描 Markdown |
+| 结构检查 | visual | `visual.html` 存在且非空 + 涉及前端视觉的需求已选定 UI 预设（由 frontend-scope.md 判定，纯后端/无新视觉交互自动跳过） | 脚本扫描 |
 | 契约完整性 | plan | 契约四要素（统一响应体/错误码表/认证/分页） | 脚本校验 YAML 字段 |
 | 需求回链 | tasks | 每条 Req 至少被一个任务回链覆盖 | 脚本交叉核对 |
-| 代码验证 | implement/verify | 每任务 lint + 单测（前端测试 + JUnit）+ 契约一致性 | 跑构建/测试命令，解析结果 |
-| 验证报告 | verify | `verify-report.md` 四部分齐备（测试汇总/契约一致性/宪法抽查/验收对照表）+ 跨端 DAG 自动生成 | 脚本校验 + observability_generate |
-| 人工检查点 | probe/specify/plan/verify | CLI 暂停，展示产物，等待 approve / reject(附意见) | 交互式 / 异步审批 |
+| 代码验证 | implement | 每任务 lint + 单测（前端测试 + JUnit） | 跑构建/测试命令，解析结果 |
+| 端到端冒烟 | verify | 真实启动后端+前端，从前端页面入口冒烟（smoke-report.md 结论「通过」） | smoke_run 脚本 |
+| 验证报告 | verify | `verify-report.md` 四部分齐备（端到端冒烟/契约一致性/宪法抽查/验收对照表）+ 跨端 DAG 自动生成 | 脚本校验 + observability_generate |
+| 人工检查点 | probe/specify/visual/plan/verify | CLI 暂停，展示产物，等待 approve / reject(附意见) | 交互式 / 异步审批 |
 
 **输出**：每次门禁产出结构化结果（通过/失败项清单），失败项写入 state.json，成为下一次的整改输入。
 
@@ -361,10 +363,10 @@ features/<需求ID>/state.json
 
 | 模块 | 已实现（v0.0.0） | v0.2（演进） |
 |---|---|---|
-| M1 CLI | init / new(--prd/--kb) / probe / status / redo / strip / approve / reject / <stage> / help / --version | light/change profile 命令 |
-| M2 流程引擎 | full profile 七阶段（probe 探询前置） | light（小改动）/ change（增量变更）裁剪 |
+| M1 CLI | init / new(仅建目录) / probe(--prd/--kb) / status / redo / strip / approve / reject / <stage> / help / --version | light/change profile 命令 |
+| M2 流程引擎 | full profile 八阶段（probe 探询前置 + visual 视觉确认） | light（小改动）/ change（增量变更）裁剪 |
 | M3 知识资产库 | 宪法 + 平台层 6 文件 + ui-presets；业务层知识由 specify 生成于 features/；需求级 knowledge/ 知识库 | 知识资产版本化与冲突检测 |
-| M4 模板提示词 | 5 模板 + 7 指令（含 probe；probe 按九维需求要素三档分工） | 按演练反馈迭代 |
+| M4 模板提示词 | 5 模板 + 8 指令（含 probe/visual；probe 按九维需求要素三档分工） | 按演练反馈迭代 |
 | M5 组装器 | 阶段映射 + 片段注入 + 超阈值告警 + 知识库选读（specify 优先探询沉淀） | Token 预算自动裁剪 |
 | M6 引擎适配 | Codex + Manual 双适配 + 按环节切模型 | 更多引擎（Claude Code 等） |
 | M7 门禁 | 结构检查 + 契约校验 + 需求回链 + 测试执行 + verify 门禁 + 人工检查点 | 契约一致性自动比对脚本增强、安全扫描闸门 |

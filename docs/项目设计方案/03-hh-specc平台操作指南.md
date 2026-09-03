@@ -1,13 +1,13 @@
 # hh-specc 平台操作指南
 
-> 版本：v0.0.0 ｜ 编制日期：2026-08-25 ｜ 适用对象：使用 hh-specc 将自然语言需求转成可运行代码的开发者
-> 配套文档：《01-业界Spec流程对标分析》（§2.7 自研对标）、《03-specc平台功能模块架构》、《07-端到端演练复盘》
+> 版本：v0.0.0 ｜ 编制日期：2026-08-30 ｜ 适用对象：使用 hh-specc 将自然语言需求转成可运行代码的开发者
+> 配套文档：《01-业界Spec流程对标分析》（§2.7 自研对标）、《03-specc平台功能模块架构》、[《端到端演练复盘》](../中间过程产物存档/04-端到端演练复盘.md)
 
 ---
 
 ## 0. 一句话理解 hh-specc
 
-hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言需求交给它，它按七阶段流程（`probe → specify → clarify → plan → tasks → implement → verify`）先帮你把需求探询补全，再逐阶段生成规格与代码，每一步都经过「自动门禁 + 人工检查点」双闸门，最终产出**规格资产 + 可运行代码 + 审计线索**三类交付物。
+hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言需求交给它，它按八阶段流程（`probe → specify → clarify → visual → plan → tasks → implement → verify`）先帮你把需求探询补全，再逐阶段生成规格与代码，每一步都经过「自动门禁 + 人工检查点」双闸门，最终产出**规格资产 + 可运行代码 + 审计线索**三类交付物。
 
 ---
 
@@ -47,7 +47,7 @@ hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言�
 
 ### 1.4 输入需求材料（`--prd` 需求文档 / `--kb` 知识库）
 
-新建需求时，除了用一句话描述需求外，还可挂入两类材料。平台严格区分二者语义，**不再使用旧的 `--attach`**（已退役，语义模糊）：
+`new` 只创建目录结构，**需求内容统一在 `probe` 阶段挂载**。描述需求时除一句话概述外，还可挂两类材料。平台严格区分二者语义，**不再使用旧的 `--attach`**（已退役，语义模糊）：
 
 | 参数 | 语义 | 去向 | 注入方式 |
 |---|---|---|---|
@@ -56,18 +56,18 @@ hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言�
 
 ```bash
 # 需求文档：全文并入 requirement.md，作为需求正文
-./specc.sh new demo "需求概述" --prd ./需求文档.md
+./specc.sh probe demo "需求概述" --prd ./需求文档.md
 
 # 知识库：复制进 knowledge/，走「索引 + 选读」，不全文灌入
-./specc.sh new demo "需求概述" --kb ./参考目录/ --kb ./术语表.md
+./specc.sh probe demo "需求概述" --kb ./参考目录/ --kb ./术语表.md
 
 # 二者可并用：一份 PRD + 若干参考资料
-./specc.sh new demo "需求概述" --prd ./需求文档.md --kb ./参考目录/
+./specc.sh probe demo "需求概述" --prd ./需求文档.md --kb ./参考目录/
 ```
 
 - **文件**：按扩展名白名单（md/txt/json/yaml/js/jsx/ts/tsx/java/sql/css/scss/html/xml/sh 等）读入，忽略非文本与空文件。`--prd` 全量 cat 进 `requirement.md`；`--kb` 复制进 `knowledge/`。
 - **目录**：`--prd` 读入目录内全部文本文件（标注来源）；`--kb` 递归复制文本文件到 `knowledge/`（保留相对路径），并过滤 `node_modules`/`.git`/`target`/`dist`/`build`/`*.log` 及图片/`.class` 等非文本噪音。
-- **知识库选读机制**：`--kb` 的内容不会一股脑灌进上下文。`new` 时会自动生成 `knowledge/.index.md`（仅每个文件的标题行摘要），probe/specify 阶段先只给模型这份**索引**；模型据此写出候选清单 `knowledge/selection.md`（每行一个相对路径），你编辑确认后重跑相应阶段，系统才把**选中的那几份**全文注入。上下文从「全量」收敛为「索引 + 3~5 份选中」，且你不会蹲在命令行猜挂哪个文件。
+- **知识库选读机制**：`--kb` 的内容不会一股脑灌进上下文。挂载时会自动生成 `knowledge/.index.md`（仅每个文件的标题行摘要），probe/specify 阶段先只给模型这份**索引**；模型据此写出候选清单 `knowledge/selection.md`（每行一个相对路径），你编辑确认后重跑相应阶段，系统才把**选中的那几份**全文注入。上下文从「全量」收敛为「索引 + 3~5 份选中」，且你不会蹲在命令行猜挂哪个文件。
 - **图片**：当前引擎接收的是文本 prompt，图片二进制本身不直接作为输入。但框架已支持**按环节自动切换视觉多模态模型**（`model.vision.id`，默认 `deepseek-v4-flash-vision-exp`）——凡上下文带有图片路径引用（markdown 图片 / 【附图:path】 / 裸图片路径，如 UI 预设的首页设计图、`--prd` 目录里的图片路径），该环节会自动用视觉模型，模型即可「看图」理解布局与风格。
 - **需求描述缺省**：无 `--prd` 也无描述时，`requirement.md` 写入占位提示（见下方「空需求占位」），作为 probe 探询的阶段起点，可由探询/后续手动补充。
 
@@ -80,11 +80,12 @@ hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言�
 | 命令 | 作用 |
 |---|---|
 | `./specc.sh init` | 初始化/校验平台资产与工作目录 |
-| `./specc.sh new <需求ID> ["描述"]` | 创建需求工作目录（可携带需求描述） |
-| `./specc.sh new <需求ID> ["描述"] --prd <文件\|目录>...` | 创建需求并挂入**需求文档（PRD）**（进 `requirement.md` 全文注入，见 §1.4） |
-| `./specc.sh new <需求ID> ["描述"] --kb <文件\|目录>...` | 创建需求并挂入**知识库**（进 `knowledge/`，索引+选读，见 §1.4） |
+| `./specc.sh new <需求ID>` | 创建需求工作目录（仅建目录结构，不写需求内容） |
+| `./specc.sh probe <需求ID> ["描述"] [--prd <文件\|目录>...] [--kb <文件\|目录>...]` | 描述需求并启动探询：挂入**需求文档（PRD）**进 `requirement.md`、**知识库**进 `knowledge/`（见 §1.4） |
+| `./specc.sh ui <需求ID> list` | 列出可用 UI 预设，生成并排对比图并在浏览器打开（看图选型，见 §3.3） |
+| `./specc.sh ui <需求ID> select <code> [--fe <前端名>]` | 为某前端锁定 UI 预设，幂等写入 `contracts/ui-preset.md`（多前端各选一个，见 §3.3） |
 | `./specc.sh status [需求ID]` | 查看阶段进度、门禁状态、任务进度、审计历史 |
-| `./specc.sh <stage> <需求ID>` | 执行七阶段之一 |
+| `./specc.sh <stage> <需求ID>` | 执行八阶段之一 |
 | `./specc.sh redo <stage> <需求ID>` | 重置某阶段及之后的门禁（保留之前阶段） |
 | `./specc.sh strip <需求ID> [--apply]` | 剥离可观测性注解/标签（交付前清理，默认仅预览） |
 | `./specc.sh approve <需求ID> [意见]` | 异步审批：通过待审阶段 |
@@ -98,16 +99,17 @@ hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言�
 
 ---
 
-## 3. 七阶段流程
+## 3. 八阶段流程
 
-七阶段严格线性，禁止跳阶段（前置阶段未通过，后续阶段拒绝执行）。
+八阶段严格线性，禁止跳阶段（前置阶段未通过，后续阶段拒绝执行）。
 
 | 阶段 | 产物（写入 `features/<需求ID>/`） | 自动门禁 | 人工检查点 |
 |---|---|---|---|
 | probe | `probe-questions.md`（探询问题清单）；用户回答写 `probe-answers.md` | ✅ 问题清单已生成 | ✅ 需人工审（裁决"是否问清了"） |
 | specify | `spec.md` + 业务层知识三件套 `business.md`/`data-model.md`/`flows.md` | ✅ spec 结构 + 三件套齐备 | ✅ 需人工审 |
-| clarify | `clarify.md` + 回填 `spec.md` | ✅ 无 `[NEEDS CLARIFICATION]` 残留 | 自动通过 |
-| plan | `plan.md` + `contracts/*.yaml` | ✅ 契约四要素齐备 | ✅ 需人工审 |
+| clarify | `clarify.md` + 回填 `spec.md` + `frontend-scope.md`（前端视觉范围判定） | ✅ 无 `[NEEDS CLARIFICATION]` 残留 + frontend-scope.md 已判定 | 自动通过 |
+| visual | `visual.html`（全页面视觉图，桌面+移动端） | ✅ visual.html 已生成 + UI 预设已选定 | ✅ 需人工审（多轮澄清敲定视觉模板） |
+| plan | `plan.md` + `contracts/*.yaml` | ✅ 契约四要素齐备 + 各前端 UI 预设已选定 | ✅ 需人工审 |
 | tasks | `tasks.md` | ✅ 每条 Req 被任务回链覆盖 | 自动通过 |
 | implement | 代码写入 `projects/<需求ID>/` | 逐任务验证命令 | 自动通过 |
 | verify | `verify-report.md` + 跨端可观测 DAG | ✅ 验证报告四部分 + DAG 自动生成 | ✅ 需人工终审 |
@@ -118,14 +120,14 @@ hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言�
 
 - **probe**：`probe-questions.md` 缺失或为空 → 报「探询阶段未产出问题清单」。是否"问清了"由人工裁决，门禁只保证清单存在
 - **specify**：`spec.md` 缺 `Req-N` 条目、缺「不做什么」章节、缺「量化约束」章节、三件套任一缺失/为空 → 任一不满足即失败
-- **clarify**：`spec.md` 仍残留 `[NEEDS CLARIFICATION]` → 列出未消除的行
-- **plan**：契约缺四要素（`error-code-table` / `auth:` / `pageNum` / 统一响应体）→ 逐个文件报缺哪项
+- **clarify**：`spec.md` 仍残留 `[NEEDS CLARIFICATION]` → 列出未消除的行；`frontend-scope.md` 缺失或未含 `frontend_visual_required` → 报「未判定前端视觉范围」
+- **plan**：契约缺四要素（`error-code-table` / `auth:` / `pageNum` / 统一响应体）→ 逐个文件报缺哪项；涉及前端视觉的需求（由 `frontend-scope.md` 判定）须为其中声明的每个前端工程选定 UI 预设（见 §3.3），否则逐前端报缺失
 - **tasks**：spec 中某条 `Req-N` 未被任何任务的回链行覆盖 → 报出缺失的需求编号
-- **verify**：`verify-report.md` 缺四部分（测试汇总/契约一致性/宪法抽查/验收对照表）→ 逐项报缺；跨端可观测 DAG 生成失败 → 报扫描/合并错误
+- **verify**：端到端冒烟报告 `smoke-report.md` 缺失或未「通过」→ 报冒烟失败；`verify-report.md` 缺四部分（端到端冒烟/契约一致性/宪法抽查/验收对照表）→ 逐项报缺；跨端可观测 DAG 生成失败 → 报扫描/合并错误
 
 ### 3.2 人工检查点（✋ 后置）
 
-需要人工审查的阶段有四个：**probe / specify / plan / verify**。有两种模式：
+需要人工审查的阶段有五个：**probe / specify / visual / plan / verify**。有两种模式：
 
 **交互模式**（你在终端直接跑，stdin 是 TTY）：CLI 暂停，提示输入 `approve` / `reject`。
 
@@ -137,6 +139,68 @@ hh-specc 是一个**规范驱动 AI Coding 平台**：你把一段自然语言�
 ```
 
 > 本平台在 IDE Agent 代跑的场景下通常走**异步模式**——这是「人工检查点异步化」的提前落地，人始终是质量守门人。
+
+### 3.3 UI 预设视觉选型（看图定风格）
+
+> UI 界面是主观的：文字描述无法传达视觉风格，必须先看图再定。平台把「前端视觉与布局」收敛为**可选的 UI 预设范式**，提供**视觉图 + 并排对比**供你确认选型，最后由 plan 门禁强制每个前端都已选定。
+
+**三套预设范式**（唯一源在 `.specc/platform/ui-presets/`，每套含 `README.md` 文字权威源 + `preview.html` 视觉图）：
+
+| 预设 code | 范式 | 适用场景 |
+|---|---|---|
+| `dashboard-admin` | 后台管理 | 顶栏 + 侧边栏 + 统计卡片 + 数据表格 |
+| `landing-page` | 落地页 | Hero + 信任背书 + 特性区 + CTA + 页脚（内容门户 / 营销站） |
+| `mobile-content-feed` | 移动内容流 | 手机壳 + 单列卡片信息流（小程序） |
+
+**① 看图选型**：
+
+```bash
+./specc.sh ui <需求ID> list
+```
+
+列出可用预设，并生成**并排对比图**（`.specc-cache/ui-compare.html`，iframe 引用各预设视觉图、不复制内容）在浏览器打开，供你横向比较风格。
+
+**② 看图确认后锁定**：
+
+```bash
+./specc.sh ui <需求ID> select <code> [--fe <前端名>]
+```
+
+- 幂等写入 `features/<需求ID>/contracts/ui-preset.md` 的「前端 → 预设」映射；同一前端重复 select 覆盖而非追加，保留其它前端。
+- 多前端需求可为**每个前端各选一个**预设（如 `web-admin` 用后台范式、`web-reader` 用落地页范式）：
+
+  ```bash
+  ./specc.sh ui ai-guide select dashboard-admin --fe web-admin
+  ./specc.sh ui ai-guide select landing-page   --fe web-reader
+  ```
+
+  产物 `contracts/ui-preset.md` 形如：
+
+  ```markdown
+  ## 前端映射
+  - 前端：web-admin -> 预设：dashboard-admin
+  - 前端：web-reader -> 预设：landing-page
+  ```
+
+- 未指定 `--fe` 时落到 `default`，作为单前端 / 兜底预设。
+
+**③ 门禁与注入**：
+
+- **事前引导**：涉及前端视觉的需求在进入 `plan` 前若尚未选定预设，会先提示先看图选型。
+- **门禁强制**：`plan` 门禁从 `frontend-scope.md` 读取声明的每个前端工程（`web-admin` / `web-reader` / `miniprogram`），逐个核对 `ui-preset.md` 是否已选定；缺失即逐前端报错，阻止继续。
+- **按前端注入**：`visual` / `plan` / `implement` 阶段，组装器按「前端 → 预设」映射，把对应预设的 `README.md`（视觉令牌 / 布局骨架 / 组件纪律）注入该前端工程，作为视觉与布局契约（引用不复制，令牌唯一源仍只在各预设 README）。
+
+### 3.4 全页面视觉确认（visual，多轮澄清敲定视觉模板）
+
+> 需求说清了「做什么」，但没说清「长什么样」。visual 阶段在 `clarify` 之后、`plan` 之前，把已澄清的需求落实成一套**全页面视觉图**，人审敲定后再据此展开技术方案，避免「需求对、体验错」的返工。
+
+- **触发**：仅当 clarify 阶段模型判定「涉及新的前端视觉/交互」（`frontend-scope.md` 的 `frontend_visual_required: true`）才执行；纯后端 / 无新视觉交互的需求自动跳过，不阻塞后续阶段。
+- **产物**：`features/<需求ID>/visual.html` —— 单文件纯静态 HTML，覆盖 spec 中每个前端页面 × 桌面/移动端两断点，内容用语义化占位符，令牌全部取自已锁定的 UI 预设（见 §3.3）。
+- **执行**：
+  ```bash
+  ./specc.sh visual <需求ID>
+  ```
+  生成后浏览器打开 `visual.html` 审阅；不通过则 `reject` 附意见、多轮修订，直至 `approve` 敲定视觉模板。
 
 ---
 
@@ -161,8 +225,10 @@ model:                      # 切模型只改这里，lib/engines.sh 自动生�
     id: deepseek-v4-flash-vision-exp
 
 pipeline:
-  profile: full             # full 七阶段全走（light/change 为 v0.2 规划）
+  profile: full             # full 八阶段全走（light/change 为 v0.2 规划）
   context_warn_chars: 60000 # 上下文体积告警阈值
+  visual:
+    enabled: true           # 视觉确认阶段：仅当模型判定涉及新的前端视觉/交互才执行，纯后端/无新视觉交互自动跳过
 
 tasks:
   max_retry: 1              # 单任务失败自动重试次数
@@ -186,7 +252,7 @@ hh-specc/
 ├── .specc/             # 平台资产（宪法/平台层/模板/指令/配置）—— 新增需求零改动
 ├── lib/ specc.sh       # 编排层（CLI + 流程引擎 + 门禁 + 组装器 + 引擎适配）
 ├── features/<需求ID>/   # 规格产物（spec/plan/tasks/contracts + 业务层知识 + knowledge 知识库 + state.json）
-│   └── knowledge/      # 本需求专属知识库（--kb 挂入；含 .index.md 索引 + selection.md 选读清单）
+│   └── knowledge/      # 本需求专属知识库（probe --kb 挂入；含 .index.md 索引 + selection.md 选读清单）
 ├── projects/<需求ID>/   # 代码产物（backend/ shared/ web-admin/ miniprogram/）
 └── docs/               # 项目文档
 ```
@@ -224,24 +290,26 @@ hh-specc/
 
 ```bash
 ./specc.sh init
-./specc.sh new daily-quote "实现一个每日一句功能：Web 后台与微信小程序各展示一段文学作品语录，含出处、背景图、日期；后端提供今日语录接口；无语录时走系统兜底"
+./specc.sh new daily-quote
 ```
 
 输出：
 
 ```
 [通过] 需求工作目录已创建：.../features/daily-quote
-[通过] 需求描述已记录：.../features/daily-quote/requirement.md
-[信息] 开始第一阶段（需求探询）：./specc.sh probe daily-quote
+[信息] 下一步（描述需求并探询）：./specc.sh probe daily-quote ["描述"] [--prd <文件|目录>] [--kb <文件|目录>]
 ```
 
-产物：`features/daily-quote/`（含 `contracts/` 子目录、`state.json`、`requirement.md`）。
+产物：`features/daily-quote/`（仅含 `contracts/`、`knowledge/` 子目录与 `state.json`，**不含 `requirement.md`**——需求内容在 probe 阶段才挂载）。
 
-若想挂入需求文档或知识库，可用 `--prd` / `--kb`（见 §1.4）：
+描述需求并挂入需求文档/知识库，统一在 probe 阶段进行（见 §1.4）：
 
 ```bash
-# 挂一份需求文档（PRD）+ 几份参考素材（知识库）
-./specc.sh new ai-guide "AI Agent 方向岗位面试指南 web 平台" \
+# 一句话描述需求（也可同时挂一份 PRD + 几份参考素材）
+./specc.sh probe daily-quote "实现一个每日一句功能：Web 后台与微信小程序各展示一段文学作品语录，含出处、背景图、日期；后端提供今日语录接口；无语录时走系统兜底"
+
+# 或：挂需求文档（PRD）+ 知识库
+./specc.sh probe ai-guide "AI Agent 方向岗位面试指南 web 平台" \
   --prd ./需求说明书.md \
   --kb ~/Documents/AI-Guide/AI/Agent知识 --kb ~/Documents/AI-Guide/简历优化
 ```
@@ -361,7 +429,7 @@ hh-specc/
 ./specc.sh verify daily-quote
 ```
 
-生成 `verify-report.md`（测试汇总 + 契约一致性 + 验收标准逐条对照表），并自动生成跨端可观测 DAG：
+生成 `verify-report.md`（端到端冒烟 + 契约一致性 + 宪法抽查 + 验收标准逐条对照表），并自动生成跨端可观测 DAG：
 
 - 后端 DAG：`projects/daily-quote/backend/target/observability/`（编译期 APT 自动生成）
 - 前端 DAG：`projects/daily-quote/target/observability-frontend/`（前端扫描器生成）
@@ -371,7 +439,7 @@ hh-specc/
 
 ```bash
 ./specc.sh approve daily-quote
-# [通过] 七阶段全部完成！需求【daily-quote】已端到端实现完毕
+# [通过] 八阶段全部完成！需求【daily-quote】已端到端实现完毕
 ```
 
 ---
@@ -423,4 +491,4 @@ codex 引擎会明确报错 `未设置环境变量 DEEPSEEK_API_KEY`，并自动
 - 契约一致性自动比对脚本增强、安全扫描闸门
 - 多需求并行隔离、知识资产版本化
 
-> 端到端演练暴露的真实短板（详见《07-端到端演练复盘》）：verify 验证的是「代码看起来对」而非「系统能跑」，建议人工在 verify 后补做一次真机级启动冒烟（启动依赖服务 → 迁移 → 启动后端 → 验证接口与静态资源）。
+> 端到端演练暴露的真实短板（详见 [《端到端演练复盘》](../中间过程产物存档/04-端到端演练复盘.md)）：verify 验证的是「代码看起来对」而非「系统能跑」，建议人工在 verify 后补做一次真机级启动冒烟（启动依赖服务 → 迁移 → 启动后端 → 验证接口与静态资源）。

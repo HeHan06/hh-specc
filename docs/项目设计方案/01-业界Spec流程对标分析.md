@@ -164,11 +164,12 @@ openspec/changes/<change-id>/
 - **形态**：纯 shell CLI（零构建、零第三方依赖）+ Codex Harness 引擎适配层；引擎可退化到 Manual 人工模式（只出提示词与产物清单，供任意 IDE Agent 执行）。
 - **哲学**：不重造轮子，而是**取六方案的公约数**——Spec Kit 的流程骨架、Kiro 的 EARS、BMAD 的上下文分层、OpenSpec 的规格生命周期，针对「双端 + 中等能力模型 + 合规」这个具体场景做减法与补强。
 
-**工作流（六阶段线性 + 双闸门）**：
+**工作流（八阶段线性 + 双闸门）**：
 
 ```
-specify → clarify → plan → tasks → implement → verify
+probe → specify → clarify → visual → plan → tasks → implement → verify
   每个阶段：组装上下文 → 引擎执行 → 自动门禁✓ → 人工检查点✋
+  visual 特殊：仅当模型判定「涉及新的前端视觉/交互」（frontend-scope.md）才执行，纯后端自动跳过
   implement 特殊：逐任务循环（每任务测试先行 + 失败自动重试 1 次后挂起）
 ```
 
@@ -176,7 +177,7 @@ specify → clarify → plan → tasks → implement → verify
 
 ```
 hh-specc/
-├── .specc/            # 平台资产：宪法 + 平台层知识(5) + 模板(4) + 指令(6) + 配置
+├── .specc/            # 平台资产：宪法 + 平台层知识(5) + 模板(4) + 指令(8) + 配置
 ├── lib/ specc.sh      # 编排层：流程引擎 + 门禁 + 组装器 + 引擎适配 + 状态管理
 ├── features/<需求ID>/  # 规格产物：spec/plan/tasks/contracts + 业务层知识三件套
 └── projects/<需求ID>/  # 代码产物：backend/ shared/ web-admin/ miniprogram/
@@ -193,7 +194,7 @@ hh-specc/
 | 引擎可替换 | Codex / Manual 双适配，模型、端点经 config.yaml 可切（当前 DeepSeek V4 Pro） | 自研（解耦引擎与规格） |
 | Git 形态 A：工作区直写 | 代码直写工作区不自动 commit，进版本库的动作保留给人 | 自研（「人是质量守门人」） |
 
-**端到端演练（daily-quote）**：用 hh-specc 自身完成「每日一句」双端需求，验证了六阶段全链路 + 单测 + 构建 + 真机级启动（PG 迁移 + jar 启动 + HTTP 200）。
+**端到端演练（daily-quote）**：用 hh-specc 自身完成「每日一句」双端需求，验证了全链路（彼时六阶段，现已扩展为八阶段）+ 单测 + 构建 + 真机级启动（PG 迁移 + jar 启动 + HTTP 200）。
 
 **特点小结**：
 - ✅ 宪法 / 平台层 / 业务层三层上下文分离注入，对中等能力模型友好；平台与需求隔离清晰、可复用；双闸门（自动门禁 + 人工检查点）兼顾效率与合规
