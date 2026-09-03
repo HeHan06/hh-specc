@@ -40,10 +40,14 @@ model:
 
 # ---- 流程配置 ----
 pipeline:
-  # 流程裁剪：full（六阶段全走）；light / change 为 v0.2 规划
+  # 流程裁剪：full（八阶段全走）；light / change 为 v0.2 规划
   profile: full
   # 上下文组装的体积告警阈值（字符数），超过则提示裁剪
   context_warn_chars: 60000
+  # 视觉确认阶段（visual）：在 clarify 之后、plan 之前生成全页面视觉图并人工审批。
+  # enabled=false 时整体关闭（所有需求跳过）；enabled=true 时仍仅当模型判定「涉及新的前端视觉/交互」才执行（frontend-scope.md），纯后端/无新视觉交互自动跳过。
+  visual:
+    enabled: true
 
 # ---- 任务执行配置（implement 阶段）----
 tasks:

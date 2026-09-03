@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================
 # lib/pipeline.sh —— M2 流程引擎（阶段状态机）
-# 职责：驱动六阶段线性流程，执行
+# 职责：驱动八阶段线性流程，执行
 #   「前置条件检查 → 组装上下文 → 调引擎 → 产物落盘 → 自动门禁 → 人工检查点」循环。
 # 关键规则：
 #   - 禁止跳阶段：前置阶段未通过不得执行后续阶段（验收用例 TC-G1）
@@ -15,6 +15,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/assemble.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/engines.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/gates.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/observability.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/smoke.sh"
 
 # ---- 各阶段产物说明（供引擎/人工执行时明确交付物）----
 stage_deliverables() {
@@ -25,13 +26,16 @@ stage_deliverables() {
     specify)  echo "- $fdir/spec.md（EARS 需求 + 端归属 + 验收标准 + 不做什么）"
               echo "- $fdir/business.md $fdir/data-model.md $fdir/flows.md（业务层知识三件套，后续阶段注入）" ;;
     clarify)  echo "- $fdir/clarify.md（问答记录）"
-              echo "- $fdir/spec.md（回填，[NEEDS CLARIFICATION] 清零）" ;;
+              echo "- $fdir/spec.md（回填，[NEEDS CLARIFICATION] 清零）"
+              echo "- $fdir/frontend-scope.md（前端视觉范围判定：是否涉及新的前端视觉/交互）" ;;
+    visual)   echo "- $fdir/visual.html（全页面视觉图，桌面端+移动端，占位符内容）" ;;
     plan)     echo "- $fdir/plan.md（技术方案，遵循 plan 模板）"
               echo "- $fdir/contracts/<模块>.yaml（契约，四要素齐备）" ;;
     tasks)    echo "- $fdir/tasks.md（原子任务 + 需求回链 + 验证命令）" ;;
     implement) echo "- 代码写入 $PROJECTS_DIR/$(basename "$fdir")/：web-admin/ miniprogram/ backend/ shared/（含单测）"
               echo "- 不自动 commit（宪法 5.5 / Git 形态 A）" ;;
-    verify)   echo "- $fdir/verify-report.md（测试汇总 + 契约一致性 + 验收对照表）" ;;
+    verify)   echo "- $fdir/smoke-report.md（端到端冒烟报告，框架 lib/smoke.sh 确定性生成）"
+              echo "- $fdir/verify-report.md（端到端冒烟 + 契约一致性 + 宪法抽查 + 验收对照表）" ;;
   esac
 }
 
@@ -80,6 +84,31 @@ pipeline_run_stage() {
   # 1) 前置条件检查
   pipeline_check_precondition "$stage" "$fdir" || return 1
 
+  # 1.5) visual 阶段跳过：仅当模型判定「涉及新的前端视觉/交互」才执行
+  #      （依据 frontend-scope.md，纯后端/无新视觉交互自动通过，避免卡住后续阶段）
+  if [[ "$stage" == "visual" ]]; then
+    local visual_enabled
+    visual_enabled="$(cfg_get 'pipeline.visual.enabled' 'true')"
+    if [[ "$visual_enabled" != "true" ]] || ! gate_needs_frontend_visual "$fdir"; then
+      state_set "$fdir" "stage" "visual"
+      state_set "$fdir" "gates.visual" "approved"
+      local skip_reason
+      if [[ "$visual_enabled" != "true" ]]; then skip_reason="visual 已关闭"; else skip_reason="不涉及新的前端视觉/交互"; fi
+      state_history_add "$fdir" "阶段 visual 跳过：$skip_reason"
+      log_info "视觉确认阶段跳过（$skip_reason）"
+      return 0
+    fi
+  fi
+
+  # 1.6) plan 阶段事前引导：涉及前端视觉的需求未选 UI 预设时，先提示看图选型，
+  #      避免「跑完 plan 才被门禁打回、要 redo 重跑」。仅提示，不阻断
+  #      （是否强行先选由用户决定，最终以 plan 门禁 gate_check_plan 为准）。
+  if [[ "$stage" == "plan" ]] && gate_needs_frontend_visual "$fdir" && [[ ! -f "$fdir/contracts/ui-preset.md" ]]; then
+    log_warn "涉及前端视觉的需求尚未选定 UI 预设，本次 plan 将缺少视觉约束。建议先看图选型："
+    log_warn "  ./specc.sh ui $(basename "$fdir") list        # 浏览器打开并排对比图"
+    log_warn "  ./specc.sh ui $(basename "$fdir") select <code>  # 看图确认后锁定预设"
+  fi
+
   state_set "$fdir" "stage" "$stage"
   state_set "$fdir" "gates.$stage" "running"
   state_history_add "$fdir" "阶段开始：$stage"
@@ -102,6 +131,9 @@ pipeline_run_stage() {
     clarify)   [[ -f "$fdir/spec.md" ]] && extras+=("$fdir/spec.md")
                # 人工提前提供的澄清答案（可选）：若存在则注入，模型据此直接回填
                [[ -f "$fdir/clarify-answers.md" ]] && extras+=("$fdir/clarify-answers.md") ;;
+    visual)    [[ -f "$fdir/spec.md" ]] && extras+=("$fdir/spec.md")
+               [[ -f "$fdir/clarify.md" ]] && extras+=("$fdir/clarify.md")
+               [[ -f "$fdir/frontend-scope.md" ]] && extras+=("$fdir/frontend-scope.md") ;;
     plan)      [[ -f "$fdir/spec.md" ]] && extras+=("$fdir/spec.md") ;;
     tasks)     [[ -f "$fdir/plan.md" ]] && extras+=("$fdir/plan.md")
                # 契约文件一并注入
@@ -120,17 +152,16 @@ pipeline_run_stage() {
   fi
   log_info "上下文已组装：$prompt_file"
 
-  # 3) 引擎执行（codex 或 manual 退化）
-  local deliverables; deliverables="$(stage_deliverables "$stage" "$fdir")"
-  engine_run "$stage" "$fdir" "$prompt_file" "$deliverables" || {
-    state_set "$fdir" "gates.$stage" "engine_failed"
-    state_history_add "$fdir" "阶段 $stage 引擎执行失败"
-    return 1
-  }
-
-  # 3.5) verify 阶段：生成跨端可观测 DAG（确定性产物，不依赖引擎）
-  # 后端 DAG 已由引擎跑测试时的编译期 APT 顺带生成；此处补前端扫描 + 跨端合并
+  # 3) verify 阶段先跑「确定性端到端冒烟 + 可观测 DAG」（引擎审计之前）：
+  #    端到端冒烟（真实启动后端+前端，从前端页面入口验证完整链路）是
+  #    「代码真的能跑」的一等证据，失败即阻断；单测汇总已取消（见 verify.md）。
+  #    冒烟顺带触发后端编译，生成编译期 APT 的 DAG 产物。
   if [[ "$stage" == "verify" ]]; then
+    smoke_run "$fdir" || {
+      state_set "$fdir" "gates.$stage" "gate_failed"
+      state_history_add "$fdir" "阶段 $stage 端到端冒烟失败"
+      return 1
+    }
     observability_generate "$fdir" || {
       state_set "$fdir" "gates.$stage" "gate_failed"
       state_history_add "$fdir" "阶段 $stage 可观测 DAG 生成失败"
@@ -138,14 +169,22 @@ pipeline_run_stage() {
     }
   fi
 
-  # 4) 自动门禁（✓ 先行）
+  # 4) 引擎执行（codex 或 manual 退化）；verify 审计读取 smoke-report.md 结论
+  local deliverables; deliverables="$(stage_deliverables "$stage" "$fdir")"
+  engine_run "$stage" "$fdir" "$prompt_file" "$deliverables" || {
+    state_set "$fdir" "gates.$stage" "engine_failed"
+    state_history_add "$fdir" "阶段 $stage 引擎执行失败"
+    return 1
+  }
+
+  # 5) 自动门禁（✓ 先行）
   if ! gate_auto_run "$stage" "$fdir"; then
     state_set "$fdir" "gates.$stage" "gate_failed"
     state_history_add "$fdir" "阶段 $stage 自动门禁失败"
     return 1
   fi
 
-  # 5) 人工检查点（✋ 后置）
+  # 6) 人工检查点（✋ 后置）
   # 返回码：0=交互模式直接通过；1=否决；2=异步模式待审批
   local review_rc=0
   gate_human_review "$stage" "$fdir" || review_rc=$?
@@ -159,7 +198,7 @@ pipeline_run_stage() {
     return 1
   fi
 
-  # 6) 全部通过：状态落盘
+  # 7) 全部通过：状态落盘
   state_set "$fdir" "gates.$stage" "approved"
   state_history_add "$fdir" "阶段完成：${stage}（自动门禁 + 人工审查均通过）"
   log_ok "阶段【${stage}】完成 ✔"
@@ -169,7 +208,7 @@ pipeline_run_stage() {
   if (( next_idx < ${#SPECC_STAGES[@]} )); then
     log_info "下一阶段：${SPECC_STAGES[$next_idx]}（./specc.sh ${SPECC_STAGES[$next_idx]} $(basename "$fdir")）"
   else
-    log_ok "六阶段全部完成！需求【$(basename "$fdir")】已端到端实现完毕"
+    log_ok "全流程完成！需求【$(basename "$fdir")】已端到端实现完毕"
   fi
   return 0
 }
@@ -351,7 +390,7 @@ pipeline_review() {
       if (( next_idx < ${#SPECC_STAGES[@]} )); then
         log_info "下一阶段：${SPECC_STAGES[$next_idx]}（./specc.sh ${SPECC_STAGES[$next_idx]} $(basename "$fdir")）"
       else
-        log_ok "六阶段全部完成！需求【$(basename "$fdir")】已端到端实现完毕"
+        log_ok "全流程完成！需求【$(basename "$fdir")】已端到端实现完毕"
       fi
       ;;
     reject)

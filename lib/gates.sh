@@ -69,7 +69,14 @@ gate_check_clarify() {
     grep -n 'NEEDS CLARIFICATION' "$spec" | sed 's/^/    /'
     return 1
   fi
-  log_ok "结构检查：无待澄清标记残留"
+  # 前端视觉范围结论必须落盘（visual 阶段分流与门禁据此判断，单一真相源）
+  local scope="$fdir/frontend-scope.md"
+  if [[ ! -f "$scope" ]] || ! grep -qE '^frontend_visual_required:[[:space:]]*(true|false)' "$scope"; then
+    log_error "门禁失败：缺少前端视觉范围结论 $scope（clarify 阶段必须判定本需求是否涉及新的前端视觉/交互）"
+    return 1
+  fi
+
+  log_ok "结构检查：无待澄清标记残留 + 前端视觉范围已判定"
   return 0
 }
 
@@ -104,6 +111,44 @@ gate_check_tasks() {
   return 0
 }
 
+# ---- 内部：判断本需求是否需要前端视觉图 ----
+# 单一真相源：features/<ID>/frontend-scope.md（clarify 阶段由模型判定并落盘，
+# 表达「本次是否涉及新的前端视觉/交互」）。不再用关键词 grep 的割裂判据。
+# 该函数被 gate_check_visual / gate_check_plan（事后门禁）与 pipeline.sh
+# visual 跳过 / plan 前置提示（事前引导）共用，判据只在此定义一份。
+# 返回 0=需要视觉图；1=不需要（纯后端 / 无新视觉交互）。
+gate_needs_frontend_visual() {
+  local fdir="$1"
+  local scope="$fdir/frontend-scope.md"
+  [[ -f "$scope" ]] || return 1
+  grep -qE '^frontend_visual_required:[[:space:]]*true' "$scope"
+}
+
+# ---- 内部：读取本需求涉及的前端工程清单（空格分隔）----
+# 单一真相源：frontend-scope.md 的 frontends 行（仅 required=true 时列出）。
+gate_frontend_engines() {
+  local fdir="$1"
+  local scope="$fdir/frontend-scope.md"
+  [[ -f "$scope" ]] || return 0
+  grep -m1 '^frontends:' "$scope" 2>/dev/null \
+    | sed 's/^frontends:[[:space:]]*//' \
+    | tr ',' ' '
+}
+
+# ---- 自动门禁：visual 阶段 —— 全页面视觉图已生成 + UI 预设已锁定 ----
+# 规则：visual.html 存在且非空；涉及前端视觉的需求必须已选定 UI 预设（视觉令牌唯一源）。
+gate_check_visual() {
+  local fdir="$1"
+  local vfile="$fdir/visual.html"
+  [[ -s "$vfile" ]] || { log_error "门禁失败：缺少全页面视觉图 $vfile（visual 阶段必须产出 visual.html）"; return 1; }
+  if gate_needs_frontend_visual "$fdir" && [[ ! -f "$fdir/contracts/ui-preset.md" ]]; then
+    log_error "门禁失败：涉及前端视觉的需求尚未选定 UI 预设。请先 ./specc.sh ui $(basename "$fdir") list 后 select"
+    return 1
+  fi
+  log_ok "结构检查：全页面视觉图已生成 + UI 预设已锁定"
+  return 0
+}
+
 # ---- 自动门禁：plan 阶段 —— 契约四要素 ----
 # 检查 contracts/ 下至少一个契约文件，且含四要素关键标记
 gate_check_plan() {
@@ -126,28 +171,57 @@ gate_check_plan() {
     log_error "门禁失败：契约四要素不齐备（见上方明细，规范见 platform/api-conventions.md）"
     return 1
   fi
-  log_ok "契约检查：四要素齐备（统一响应体/错误码/认证/分页）"
+
+  # 涉及前端视觉的需求须为每个前端工程选定 UI 预设（视觉与布局唯一源，见 platform/ui-presets/README.md）
+  # 判据与工程清单均来自 frontend-scope.md（模型判定，单一真相源，见 gate_needs_frontend_visual）
+  local is_fe=0
+  gate_needs_frontend_visual "$fdir" && is_fe=1
+  if [[ "$is_fe" -eq 1 ]]; then
+    # 从 frontend-scope.md 读取本需求涉及的前端工程，逐个核对已选预设
+    local fe fe_missing=0
+    for fe in $(gate_frontend_engines "$fdir"); do
+      if ! grep -qE "^- 前端：${fe} -> 预设：[^ ]+$" "$fdir/contracts/ui-preset.md" 2>/dev/null; then
+        log_error "门禁失败：前端【${fe}】未选定 UI 预设。请执行 ./specc.sh ui $(basename "$fdir") list 后 ./specc.sh ui $(basename "$fdir") select <code> --fe ${fe}"
+        fe_missing=1
+      fi
+    done
+    [[ "$fe_missing" -eq 1 ]] && fail=1
+  fi
+
+  [[ "$fail" -eq 1 ]] && return 1
+  log_ok "契约检查：四要素齐备（统一响应体/错误码/认证/分页）$([[ "$is_fe" -eq 1 ]] && echo '+ 各前端 UI 预设已选定')"
   return 0
 }
 
-# ---- 自动门禁：verify 阶段 —— 验证报告四部分齐备 ----
-# 规则：verify-report.md 必须存在且含四部分：测试汇总/契约一致性/宪法抽查/验收对照表。
-# 可观测 DAG 由 pipeline 在 verify 阶段先行生成（observability_generate），
-# 生成失败已在流程中阻断，此处不再重复校验 DAG 产物。
+# ---- 自动门禁：verify 阶段 —— 端到端冒烟通过 + 验证报告四部分齐备 ----
+# 规则：
+#   1) 端到端冒烟报告 smoke-report.md 必须存在且结论「通过」（由 lib/smoke.sh
+#      确定性执行，真实启动后端+前端，从前端页面入口冒烟——替代原先单测汇总）。
+#   2) verify-report.md 必须含四部分：端到端冒烟 / 契约一致性 / 宪法抽查 / 验收对照表。
+# 可观测 DAG 由 pipeline 在 verify 阶段生成，失败已在流程中阻断，此处不再重复校验。
 gate_check_verify() {
   local fdir="$1"
   local report="$fdir/verify-report.md"
+  local smoke="$fdir/smoke-report.md"
   local fail=0
+
+  [[ -s "$smoke" ]] || { log_error "门禁失败：缺少端到端冒烟报告 $smoke"; return 1; }
+  grep -q '结论：通过' "$smoke" || {
+    log_error "门禁失败：端到端冒烟未通过（${smoke}）"
+    grep -E '❌|结论' "$smoke" | sed 's/^/    /' >&2
+    return 1
+  }
+  log_ok "端到端冒烟：通过（真实启动 + 从页面入口验证完整链路）"
 
   [[ -s "$report" ]] || { log_error "门禁失败：缺少产物 $report（verify 阶段必须生成验证报告）"; return 1; }
 
-  grep -q '测试汇总' "$report"     || { log_error "门禁失败：报告缺少「测试汇总」部分"; fail=1; }
+  grep -q '端到端冒烟' "$report"   || { log_error "门禁失败：报告缺少「端到端冒烟」部分"; fail=1; }
   grep -q '契约一致性' "$report"   || { log_error "门禁失败：报告缺少「契约一致性」部分"; fail=1; }
   grep -q '宪法抽查' "$report"     || { log_error "门禁失败：报告缺少「宪法抽查」部分"; fail=1; }
   grep -qE '验收(标准)?对照表' "$report" || { log_error "门禁失败：报告缺少「验收对照表」部分"; fail=1; }
 
   [[ "$fail" -eq 1 ]] && return 1
-  log_ok "结构检查：验证报告四部分齐备（测试汇总/契约一致性/宪法抽查/验收对照表）"
+  log_ok "结构检查：验证报告四部分齐备（端到端冒烟/契约一致性/宪法抽查/验收对照表）"
   return 0
 }
 
@@ -158,6 +232,7 @@ gate_auto_run() {
     probe)   gate_check_probe "$fdir" ;;
     specify) gate_check_specify "$fdir" ;;
     clarify) gate_check_clarify "$fdir" ;;
+    visual)  gate_check_visual "$fdir" ;;
     plan)    gate_check_plan "$fdir" ;;
     tasks)   gate_check_tasks "$fdir" ;;
     verify)  gate_check_verify "$fdir" ;;
@@ -166,7 +241,7 @@ gate_auto_run() {
 }
 
 # ---- 人工检查点：暂停等待人工审查（✋）----
-# 需要人工审查的阶段：specify / plan / verify（对应 02 文档门禁汇总）
+# 需要人工审查的阶段：probe / specify / visual / plan / verify（对应流程设计文档门禁汇总）
 # 两种模式：
 #   交互模式（终端直连）：approve 通过 ｜ reject 否决（附意见，记入审计链）
 #   异步审批模式（非交互，如脚本/CI/IDE Agent 代跑）：不阻塞等待，
@@ -176,7 +251,7 @@ gate_auto_run() {
 gate_human_review() {
   local stage="$1" fdir="$2"
   case "$stage" in
-    probe|specify|plan|verify) ;;  # 这四个阶段需要人工审查（probe：裁决"是否问清了"）
+    probe|specify|visual|plan|verify) ;;  # 这五个阶段需要人工审查（visual：全页面视觉图敲定）
     *) return 0 ;;                 # 其余阶段自动通过
   esac
 

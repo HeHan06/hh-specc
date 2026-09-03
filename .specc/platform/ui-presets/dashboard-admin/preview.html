@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UI 预设视觉图 · dashboard-admin（管理后台范式）</title>
+<!--
+  本文件是「dashboard-admin」预设的视觉预览图（资产），用于 `./specc.sh ui <ID> list` 时
+  展示给用户确认选型，不参与引擎注入。
+  设计令牌 / 布局骨架 / 组件纪律的唯一权威源见同目录 README.md（FRAMEWORK-DEV §1.2）。
+  本预览为可视呈现，若与 README 有出入，以 README 为准。
+-->
+<style>
+  :root {
+    --color-bg: #f5f5f5;
+    --color-surface: #ffffff;
+    --color-primary: #2563eb;
+    --color-text: #1f2937;
+    --color-text-secondary: #6b7280;
+    --color-border: #e5e7eb;
+    --color-success: #10b981;
+    --color-warn: #f59e0b;
+    --color-danger: #ef4444;
+    --radius-card: 6px;
+    --radius-ctl: 4px;
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #e9ecef;
+    color: var(--color-text);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 24px;
+  }
+  .frame {
+    width: 960px; max-width: 100%;
+    background: var(--color-bg);
+    border-radius: 10px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  /* 顶栏 */
+  .topbar {
+    height: 56px; background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 20px;
+  }
+  .topbar .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; }
+  .topbar .logo { width: 22px; height: 22px; border-radius: 6px; background: var(--color-primary); color: #fff; display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+  .topbar .right { display: flex; align-items: center; gap: 16px; color: var(--color-text-secondary); }
+  .topbar .search { width: 180px; height: 30px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-ctl); display: flex; align-items: center; padding: 0 10px; color: #9ca3af; }
+  .topbar .avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--color-primary); color: #fff; display: grid; place-items: center; font-size: 12px; }
+  /* 主体：侧边栏 + 内容 */
+  .body { display: flex; flex: 1; min-height: 520px; }
+  .sidebar { width: 200px; background: var(--color-surface); border-right: 1px solid var(--color-border); padding: 12px 0; flex-shrink: 0; }
+  .menu-item { height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 20px; color: var(--color-text-secondary); }
+  .menu-item .dot { width: 8px; height: 8px; border-radius: 2px; background: #d1d5db; }
+  .menu-item.active { color: var(--color-primary); background: #eff6ff; border-right: 2px solid var(--color-primary); font-weight: 500; }
+  .menu-item.active .dot { background: var(--color-primary); }
+  .menu-group { font-size: 12px; color: #9ca3af; padding: 16px 20px 6px; }
+  /* 内容区 */
+  .content { flex: 1; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+  .pagehead { display: flex; align-items: flex-end; justify-content: space-between; }
+  .pagehead .title { font-size: 20px; font-weight: 600; }
+  .pagehead .crumbs { font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }
+  .btn { height: 32px; padding: 0 14px; border-radius: var(--radius-ctl); border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); display: inline-flex; align-items: center; font-size: 13px; }
+  .btn.primary { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+  /* 统计卡片 */
+  .statcards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .stat { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card); box-shadow: var(--shadow-card); padding: 14px 16px; }
+  .stat .label { font-size: 12px; color: var(--color-text-secondary); }
+  .stat .value { font-size: 24px; font-weight: 600; margin-top: 6px; }
+  .stat .delta { font-size: 12px; margin-top: 4px; }
+  .up { color: var(--color-success); } .down { color: var(--color-danger); }
+  /* 表格 */
+  .card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card); box-shadow: var(--shadow-card); overflow: hidden; }
+  .card .card-head { padding: 12px 16px; border-bottom: 1px solid var(--color-border); display: flex; align-items: center; justify-content: space-between; }
+  .card .card-head .t { font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 11px 16px; font-size: 13px; }
+  th { color: var(--color-text-secondary); background: #fafafa; font-weight: 500; border-bottom: 1px solid var(--color-border); }
+  td { border-bottom: 1px solid var(--color-border); }
+  tr:last-child td { border-bottom: none; }
+  .tag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; line-height: 18px; }
+  .tag.ok { background: #ecfdf5; color: var(--color-success); }
+  .tag.warn { background: #fffbeb; color: var(--color-warn); }
+  .tag.danger { background: #fef2f2; color: var(--color-danger); }
+  .link { color: var(--color-primary); }
+  .pager { display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--color-border); color: var(--color-text-secondary); font-size: 13px; }
+  .pager .pg { min-width: 28px; height: 28px; border: 1px solid var(--color-border); border-radius: var(--radius-ctl); display: inline-flex; align-items: center; justify-content: center; }
+  .pager .pg.cur { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <div class="topbar">
+      <div class="brand"><span class="logo">A</span> 运营控制台</div>
+      <div class="right">
+        <div class="search">搜索功能、订单…</div>
+        <span class="avatar">管</span>
+      </div>
+    </div>
+    <div class="body">
+      <div class="sidebar">
+        <div class="menu-group">总览</div>
+        <div class="menu-item active"><span class="dot"></span>数据看板</div>
+        <div class="menu-group">业务</div>
+        <div class="menu-item"><span class="dot"></span>用户管理</div>
+        <div class="menu-item"><span class="dot"></span>内容审核</div>
+        <div class="menu-item"><span class="dot"></span>订单管理</div>
+        <div class="menu-group">系统</div>
+        <div class="menu-item"><span class="dot"></span>操作日志</div>
+      </div>
+      <div class="content">
+        <div class="pagehead">
+          <div>
+            <div class="title">数据看板</div>
+            <div class="crumbs">首页 / 总览 / 数据看板</div>
+          </div>
+          <span class="btn primary">＋ 新建活动</span>
+        </div>
+        <div class="statcards">
+          <div class="stat"><div class="label">今日访问</div><div class="value">8,846</div><div class="delta up">▲ 12.4%</div></div>
+          <div class="stat"><div class="label">新增用户</div><div class="value">1,024</div><div class="delta up">▲ 3.1%</div></div>
+          <div class="stat"><div class="label">订单数</div><div class="value">356</div><div class="delta down">▼ 0.8%</div></div>
+          <div class="stat"><div class="label">转化率</div><div class="value">4.6%</div><div class="delta up">▲ 0.4%</div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="t">用户列表</span><span class="btn">导出</span></div>
+          <table>
+            <thead><tr><th>用户</th><th>角色</th><th>状态</th><th>注册时间</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr><td>王小明</td><td>管理员</td><td><span class="tag ok">正常</span></td><td>2026-08-20</td><td><span class="link">编辑</span></td></tr>
+              <tr><td>李思思</td><td>编辑</td><td><span class="tag ok">正常</span></td><td>2026-08-18</td><td><span class="link">编辑</span></td></tr>
+              <tr><td>张大力</td><td>访客</td><td><span class="tag warn">待审核</span></td><td>2026-08-15</td><td><span class="link">编辑</span></td></tr>
+              <tr><td>赵敏</td><td>访客</td><td><span class="tag danger">已封禁</span></td><td>2026-08-01</td><td><span class="link">编辑</span></td></tr>
+            </tbody>
+          </table>
+          <div class="pager"><span>共 128 条</span><span class="pg">‹</span><span class="pg cur">1</span><span class="pg">2</span><span class="pg">3</span><span class="pg">…</span><span class="pg">›</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

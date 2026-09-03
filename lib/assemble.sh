@@ -24,13 +24,15 @@ _platform_files_for_stage() {
       echo "" ;;                                          # 规格阶段保持纯净，不注入技术规约
     clarify)
       echo "dual-end-boundary.md" ;;                      # 澄清时帮助判断端归属
+    visual)
+      echo "tech-stack.md frontend-architecture.md" ;;     # 视觉图需了解技术栈与前端分层（视觉令牌来自 UI 预设）
     plan)
-      echo "tech-stack.md dual-end-boundary.md miniprogram-standards.md web-admin-standards.md api-conventions.md" ;;
+      echo "tech-stack.md dual-end-boundary.md miniprogram-standards.md web-admin-standards.md frontend-architecture.md api-conventions.md" ;;
     tasks)
-      echo "api-conventions.md" ;;                        # 拆任务只需契约规范
+      echo "frontend-architecture.md api-conventions.md" ;;    # 拆任务需前端分层约束 + 契约规范
     implement)
       # 按任务所属工程注入对应规范；默认给契约规范（由 pipeline 可再追加）
-      echo "api-conventions.md" ;;
+      echo "frontend-architecture.md api-conventions.md" ;;
     verify)
       echo "api-conventions.md" ;;                        # 验证需对照契约
     *)
@@ -50,6 +52,25 @@ _append_file() {
   }
 }
 
+# ---- 内部：注入已选 UI 预设（前端视觉与布局契约）----
+# ui-preset.md 只是「选指路径」引用；真正的令牌/骨架/纪律唯一源在
+# platform/ui-presets/<code>/README.md，此处连同源文件一起注入（引用不复制）。
+# 一个需求可有多个前端（web-admin/web-reader/miniprogram），每个前端各选一个预设；
+# ui-preset.md 记录「前端 -> 预设」映射，此处逐段解析并按前端注入对应 README。
+_append_ui_preset() {
+  local fdir="$1"
+  local preset_file="$fdir/contracts/ui-preset.md"
+  [[ -f "$preset_file" ]] || return 0
+  local code fe_name
+  while IFS= read -r line; do
+    code="$(printf '%s' "$line" | sed -n 's/^- 前端：[^ ]* -> 预设：\([^ ]*\)$/\1/p')"
+    [[ -n "$code" ]] || continue
+    fe_name="$(printf '%s' "$line" | sed -n 's/^- 前端：\([^ ]*\) -> 预设：.*$/\1/p')"
+    _append_file "$preset_file" "UI 预设选择"
+    _append_file "$SPECC_DIR/platform/ui-presets/$code/README.md" "UI 预设（前端 ${fe_name} 视觉与布局契约）"
+  done < "$preset_file"
+}
+
 # ---- 组装阶段提示词 ----
 # 用法：assemble_context <阶段名> <需求目录> [额外文件路径...]
 # 输出：完整提示词到 stdout（由调用方落盘或喂给引擎）
@@ -66,6 +87,11 @@ assemble_context() {
   for pf in $(_platform_files_for_stage "$stage"); do
     _append_file "$SPECC_DIR/platform/$pf" "平台层知识"
   done
+
+  # 2.5) UI 预设（涉及前端视觉的需求在 visual/plan 前选定，注入视觉令牌/骨架/纪律唯一源）
+  case "$stage" in
+    visual|plan|tasks|implement|verify) _append_ui_preset "$fdir" ;;
+  esac
 
   # 3) 业务层：全量注入（业务层知识由 specify 阶段生成于本需求目录）
   local bf
@@ -157,8 +183,8 @@ assemble_implement_task() {
   local pf
   case "$proj" in
     backend)     pf="api-conventions.md" ;;
-    web-admin)   pf="web-admin-standards.md api-conventions.md" ;;
-    miniprogram) pf="miniprogram-standards.md api-conventions.md" ;;
+    web-admin)   pf="frontend-architecture.md web-admin-standards.md api-conventions.md" ;;
+    miniprogram) pf="frontend-architecture.md miniprogram-standards.md api-conventions.md" ;;
     shared)      pf="dual-end-boundary.md api-conventions.md" ;;
     *)           pf="api-conventions.md" ;;
   esac
@@ -178,9 +204,12 @@ assemble_implement_task() {
     if [[ -d "$fdir/contracts" ]]; then
       local c
       for c in "$fdir"/contracts/*; do
-        [[ -f "$c" ]] && _append_file "$c" "阶段输入产物"
+        [[ -f "$c" ]] || continue
+        [[ "$(basename "$c")" == "ui-preset.md" ]] && continue   # 由 _append_ui_preset 统一注入（含源 README）
+        _append_file "$c" "阶段输入产物"
       done
     fi
+    _append_ui_preset "$fdir"
     echo ""
     echo "========== 本阶段指令（implement.md）=========="
     echo ""

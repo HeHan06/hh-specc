@@ -4,9 +4,18 @@
 > 进入本仓库的 AI / 代理在**任何操作前**都会先加载本文件，因此这里是「框架源码开发规范」的自动化入口。
 > **目标**：让「开发/修改 hh-specc 框架源码」的 AI 无需人工提醒，每次都能感知到「单一真相源、不重复造轮子」的规则。
 
+## 进入任意目录前，先读该目录的 AGENTS.md
+
+本仓库约定：**当你要查看、修改或执行某个目录（或其子目录）下的内容时，先检查该目录是否存在 `AGENTS.md`；若存在，必须先读它再动手。**
+
+- 本文件（根 `AGENTS.md`）是仓库级规范入口，约束「框架源码」的开发。
+- 子目录（如 `projects/<需求ID>/AGENTS.md`、`features/<需求ID>/AGENTS.md`）可放**该目录专属的本地说明**（如本地启动步骤、排障速查、数据说明）。进入该目录前先读它，可避免重复踩坑。
+- 若某目录没有 `AGENTS.md`，则向上沿用最近的祖先 `AGENTS.md`。
+- 子目录 `AGENTS.md` 是**运行时/本地运维类说明**，不取代、不复述 `.specc/constitution.md` 或 `FRAMEWORK-DEV.md` 的业务/框架规则（引用不复制）。
+
 ## 这是什么仓库
 
-`hh-specc` —— 一个从自然语言需求到合规代码的 AI Coding 框架（融合 Spec Kit / Kiro / BMAD / OpenSpec 风格）。它通过六阶段（specify / clarify / plan / tasks / implement / verify）驱动一个引擎生成业务代码。
+`hh-specc` —— 一个从自然语言需求到合规代码的 AI Coding 框架（融合 Spec Kit / Kiro / BMAD / OpenSpec 风格）。它通过八阶段（probe → specify → clarify → visual → plan → tasks → implement → verify）驱动一个引擎生成业务代码。
 
 ## 你正在修改哪一类代码？（必须先确认再动手）
 
