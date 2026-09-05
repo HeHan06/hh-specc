@@ -8,16 +8,18 @@
  * @capabilityPoint T-26 实现内容列表页筛选/分页/三态
  * @orchestrate listContents / listCategories
  */
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Alert, Button, Empty, Input, Pagination, Select, Space, Spin, Table } from 'antd';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Alert, Button, Empty, Input, Modal, Pagination, Select, Space, Spin, Table, Tabs, Typography } from 'antd';
 import {
   CONTENT_STATUSES,
   CONTENT_STATUS_TEXT,
   CONTENT_TYPES,
   CONTENT_TYPE_TEXT,
 } from '@shared/constants/content.js';
+import { CONTENT_TEMPLATES } from '../constants/contentTemplates.js';
 import { listCategories, listContents } from '../services/admin-content.js';
+import { parseMarkdownContent } from '../utils/parseMarkdown.js';
 
 const PAGE_SIZE = 20;
 const INITIAL_FILTER = Object.freeze({
@@ -54,7 +56,40 @@ function formatDateTime(value) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN', { hour12: false });
 }
 
+const { Paragraph } = Typography;
+
+function ContentTemplateModal({ open, onClose }) {
+  const items = CONTENT_TEMPLATES.map(({ type, label, description, template }) => ({
+    key: type,
+    label,
+    children: (
+      <div>
+        <Paragraph type="secondary" style={{ marginBottom: 12 }}>
+          {description}
+        </Paragraph>
+        <Paragraph
+          code
+          copyable={{ text: template, tooltips: ['复制模板', '已复制'] }}
+          style={{ whiteSpace: 'pre-wrap', marginBottom: 0 }}
+        >
+          {template}
+        </Paragraph>
+      </div>
+    ),
+  }));
+
+  return (
+    <Modal open={open} onCancel={onClose} footer={null} title="内容模板" width={800} getContainer={false}>
+      <Tabs items={items} />
+    </Modal>
+  );
+}
+
 export default function ContentListPage() {
+  const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+  const [importError, setImportError] = useState('');
+  const [templateOpen, setTemplateOpen] = useState(false);
   const [filter, setFilter] = useState(INITIAL_FILTER);
   const [search, setSearch] = useState(INITIAL_SEARCH);
   const [listState, setListState] = useState(INITIAL_LIST_STATE);
@@ -128,6 +163,33 @@ export default function ContentListPage() {
     setSearch((previous) => ({ ...previous, pageNum }));
   }
 
+  function handleImportClick() {
+    fileInputRef.current?.click();
+  }
+
+  function handleImportFile(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const body = String(reader.result ?? '');
+      try {
+        const imported = parseMarkdownContent(file.name, body);
+        setImportError('');
+        navigate('/contents/new', { state: { imported } });
+      } catch {
+        setImportError('导入失败：无法解析该 Markdown 文档');
+      }
+    };
+    reader.onerror = () => {
+      setImportError('导入失败：读取文件出错');
+    };
+    reader.readAsText(file, 'utf-8');
+  }
+
   const columns = [
     {
       title: '标题',
@@ -153,7 +215,24 @@ export default function ContentListPage() {
 
   return (
     <main>
-      <h1>内容管理</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h1 style={{ margin: 0 }}>内容管理</h1>
+        <Space>
+          <Button autoInsertSpace={false} onClick={() => setTemplateOpen(true)}>查看模板</Button>
+          <Button autoInsertSpace={false} onClick={handleImportClick}>导入 MD</Button>
+          <Link to="/contents/new"><Button type="primary" autoInsertSpace={false}>新建内容</Button></Link>
+        </Space>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".md,.markdown,text/markdown"
+          style={{ display: 'none' }}
+          onChange={handleImportFile}
+        />
+      </div>
+      {importError ? (
+        <Alert type="error" message={importError} showIcon style={{ marginBottom: 16 }} />
+      ) : null}
       <Space wrap style={{ marginBottom: 16 }}>
         <Input
           value={filter.keyword}
@@ -219,6 +298,7 @@ export default function ContentListPage() {
           />
         </>
       )}
+      <ContentTemplateModal open={templateOpen} onClose={() => setTemplateOpen(false)} />
     </main>
   );
 }

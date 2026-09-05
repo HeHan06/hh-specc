@@ -249,11 +249,42 @@
   margin-top: 2px;
 }
 
+/* 底部浅色轻量统计行（累积访问 / 点赞） */
+.heroSubStats {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  margin-top: 26px;
+  font-size: 13px;
+  color: rgba(199, 210, 254, 0.6);
+}
+
+.subStat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.subIcon {
+  display: inline-flex;
+  opacity: 0.8;
+}
+
+.subStat b {
+  font-weight: 600;
+  color: rgba(226, 232, 240, 0.85);
+}
+
+.subDot {
+  color: rgba(148, 163, 184, 0.5);
+}
+
 /* —— 卡片区 —— */
 .body {
   max-width: var(--content-max);
   margin: 0 auto;
-  padding: var(--space-4) var(--space-3) var(--space-5);
+  padding: var(--space-4) var(--space-3) var(--space-3);
 }
 
 .section {

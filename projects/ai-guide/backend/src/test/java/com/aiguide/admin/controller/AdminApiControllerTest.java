@@ -12,7 +12,6 @@ import com.aiguide.admin.dto.AdminViews;
 import com.aiguide.admin.service.AdminAuthService;
 import com.aiguide.admin.service.AdminContentService;
 import com.aiguide.admin.service.AdminOperationLogService;
-import com.aiguide.admin.service.AdminOrderService;
 import com.aiguide.common.ApiErrorCode;
 import com.aiguide.common.ApiException;
 import com.aiguide.common.GlobalExceptionHandler;
@@ -50,7 +49,6 @@ class AdminApiControllerTest {
 
     private static final String CONTENT_CODE = "content-1";
     private static final String TOPIC_CODE = "agent";
-    private static final String ORDER_NO = "0123456789abcdef0123456789abcdef";
 
     private static final String VALID_TOKEN = "valid-admin-token";
     private static final String NON_ADMIN_TOKEN = "non-admin-token";
@@ -61,9 +59,6 @@ class AdminApiControllerTest {
 
     @Mock
     private AdminContentService adminContentService;
-
-    @Mock
-    private AdminOrderService adminOrderService;
 
     @Mock
     private AdminOperationLogService adminOperationLogService;
@@ -89,7 +84,6 @@ class AdminApiControllerTest {
         mockMvc = MockMvcBuilders.standaloneSetup(
                         new AdminAuthController(adminAuthService),
                         new AdminContentController(adminContentService),
-                        new AdminOrderController(adminOrderService),
                         new OperationLogController(adminOperationLogService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setValidator(validator)
@@ -231,95 +225,6 @@ class AdminApiControllerTest {
     }
 
     @Test
-    void receiveTip_withAdminToken_returnsReceivedStatus() throws Exception {
-        when(adminOrderService.receiveTip(ORDER_NO)).thenReturn(tipDetailView("received"));
-
-        mockMvc.perform(post("/api/admin/tips/{orderNo}/receive", ORDER_NO)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(VALID_TOKEN)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.status").value("received"));
-    }
-
-    @Test
-    void closeTip_withAdminToken_returnsClosedStatus() throws Exception {
-        when(adminOrderService.closeTip(ORDER_NO)).thenReturn(tipDetailView("closed"));
-
-        mockMvc.perform(post("/api/admin/tips/{orderNo}/close", ORDER_NO)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(VALID_TOKEN)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.status").value("closed"));
-    }
-
-    @Test
-    void confirmConsultation_withAdminToken_returnsConfirmedStatus() throws Exception {
-        when(adminOrderService.confirmConsultation(any(String.class), any(AdminRequests.ConfirmRequest.class)))
-                .thenReturn(consultationDetailView("confirmed"));
-
-        mockMvc.perform(post("/api/admin/consultations/{orderNo}/confirm", ORDER_NO)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(VALID_TOKEN))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"adminNote\":\"已收款，本周排期\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.status").value("confirmed"))
-                .andExpect(jsonPath("$.data.freeQuotaUsed").value(true));
-    }
-
-    @Test
-    void completeConsultation_withAdminToken_returnsCompletedStatus() throws Exception {
-        when(adminOrderService.completeConsultation(any(String.class), any(AdminRequests.NoteRequest.class)))
-                .thenReturn(consultationDetailView("completed"));
-
-        mockMvc.perform(post("/api/admin/consultations/{orderNo}/complete", ORDER_NO)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(VALID_TOKEN))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"adminNote\":\"已完成\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.status").value("completed"));
-    }
-
-    @Test
-    void cancelConsultation_withAdminToken_returnsCanceledStatus() throws Exception {
-        when(adminOrderService.cancelConsultation(any(String.class), any(AdminRequests.CancelRequest.class)))
-                .thenReturn(consultationDetailView("canceled"));
-
-        mockMvc.perform(post("/api/admin/consultations/{orderNo}/cancel", ORDER_NO)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(VALID_TOKEN))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"adminNote\":\"访客取消\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.status").value("canceled"));
-    }
-
-    @Test
-    void updateConsultationNote_withAdminToken_returnsUpdatedNote() throws Exception {
-        when(adminOrderService.updateConsultationNote(any(String.class), any(AdminRequests.NoteUpdateRequest.class)))
-                .thenReturn(consultationDetailView("submitted"));
-
-        mockMvc.perform(post("/api/admin/consultations/{orderNo}/note", ORDER_NO)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(VALID_TOKEN))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"adminNote\":\"候选人本周可约\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.orderNo").value(ORDER_NO));
-    }
-
-    @Test
-    void updateConsultationNote_withBlankNote_returnsParamInvalid() throws Exception {
-        mockMvc.perform(post("/api/admin/consultations/{orderNo}/note", ORDER_NO)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(VALID_TOKEN))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"adminNote\":\"\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(1000));
-    }
-
-    @Test
     void pageOperationLogs_withAdminToken_returnsPaginationEnvelope() throws Exception {
         PageResult<AdminViews.OperationLogView> page =
                 new PageResult<>(List.of(operationLogView()), 1L, 1, 20);
@@ -363,60 +268,12 @@ class AdminApiControllerTest {
                 "2026-08-29T00:00:00Z");
     }
 
-    private AdminViews.ContentDetailView contentDetailView(String status) {
-        return new AdminViews.ContentDetailView(
-                CONTENT_CODE,
-                "langchain",
-                "article",
-                "标题",
-                "摘要",
-                "正文",
-                List.of("agent"),
-                "original",
-                status,
-                false,
-                1,
-                "published".equals(status) ? "2026-08-29T00:00:00Z" : null,
-                "2026-08-29T00:00:00Z");
-    }
-
     private AdminViews.ContentStatusView contentStatusView(String status) {
         return new AdminViews.ContentStatusView(CONTENT_CODE, status);
     }
 
     private AdminViews.ContentPublishView contentPublishView(String status) {
         return new AdminViews.ContentPublishView(CONTENT_CODE, status, "2026-08-29T00:00:00Z");
-    }
-
-    private AdminViews.TipDetailView tipDetailView(String status) {
-        return new AdminViews.TipDetailView(
-                ORDER_NO,
-                CONTENT_CODE,
-                1000,
-                "张三",
-                "13800138000",
-                "感谢分享",
-                status,
-                "received".equals(status) ? "2026-08-29T00:00:00Z" : null,
-                "closed".equals(status) ? "2026-08-29T00:00:00Z" : null,
-                "2026-08-29T00:00:00Z");
-    }
-
-    private AdminViews.ConsultationDetailView consultationDetailView(String status) {
-        return new AdminViews.ConsultationDetailView(
-                ORDER_NO,
-                "张三",
-                "phone",
-                "13800138000",
-                "Agent 架构",
-                "想咨询 Agent 面试",
-                "2099-01-01T00:00:00Z",
-                "confirmed".equals(status) ? 0 : 50000,
-                "confirmed".equals(status),
-                status,
-                null,
-                "confirmed".equals(status) ? "2026-08-29T00:00:00Z" : null,
-                "2026-08-29T00:00:00Z");
     }
 
     private AdminViews.OperationLogView operationLogView() {

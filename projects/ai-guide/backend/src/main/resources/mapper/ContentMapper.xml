@@ -33,6 +33,13 @@
         </constructor>
     </resultMap>
 
+    <resultMap id="ContentStatsViewMap" type="com.aiguide.content.dto.ContentStatsView">
+        <constructor>
+            <arg column="total_views" javaType="_long"/>
+            <arg column="total_likes" javaType="_long"/>
+        </constructor>
+    </resultMap>
+
     <sql id="PublishedContentSummaryColumns">
         SELECT c.code,
                cat.code AS category_code,
@@ -79,6 +86,13 @@
         SELECT COUNT(*)
         FROM content c
         WHERE c.status = 'published'
+    </select>
+
+    <select id="selectPublishedStats" resultMap="ContentStatsViewMap">
+        SELECT COALESCE(SUM(view_count), 0) AS total_views,
+               COALESCE(SUM(like_count), 0) AS total_likes
+        FROM content
+        WHERE status = 'published'
     </select>
 
     <select id="selectRecommendedPublished" resultMap="ContentSummaryViewMap">

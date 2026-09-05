@@ -2,6 +2,7 @@ package com.aiguide.content.mapper;
 
 import com.aiguide.admin.dto.AdminViews;
 import com.aiguide.content.dto.ContentDetailView;
+import com.aiguide.content.dto.ContentStatsView;
 import com.aiguide.content.dto.ContentSummaryView;
 import com.hhspecc.observability.Capability;
 import com.hhspecc.observability.CapabilityPoint;
@@ -46,6 +47,9 @@ public interface ContentMapper {
 
     @CapabilityPoint(task = "T-08", name = "查询已发布内容详情")
     ContentDetailView selectPublishedDetail(@Param("contentCode") String contentCode);
+
+    @CapabilityPoint(task = "T-08", name = "聚合已发布内容的浏览与点赞总数")
+    ContentStatsView selectPublishedStats();
 
     @CapabilityPoint(task = "T-08", name = "查询已发布内容详情（含点赞状态）")
     ContentDetailView selectPublishedDetailWithVisitor(@Param("contentCode") String contentCode,

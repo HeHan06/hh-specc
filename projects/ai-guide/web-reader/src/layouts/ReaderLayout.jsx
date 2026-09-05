@@ -11,8 +11,6 @@ import styles from './ReaderLayout.module.css';
 const NAV_ITEMS = [
   { to: '/', label: '首页', end: true },
   { to: '/search', label: '搜索' },
-  { to: '/tip', label: '打赏' },
-  { to: '/consultation', label: '付费咨询' },
 ];
 
 export default function ReaderLayout() {
@@ -55,11 +53,6 @@ export default function ReaderLayout() {
               <h4>内容</h4>
               <Link to="/">首页</Link>
               <Link to="/search">内容搜索</Link>
-            </div>
-            <div>
-              <h4>互动</h4>
-              <Link to="/tip">打赏支持</Link>
-              <Link to="/consultation">付费咨询</Link>
             </div>
           </div>
           <div className={styles.footerBottom}>© 2026 AI Agent 面试指南 · 沉淀你的面试知识体系</div>

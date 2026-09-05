@@ -97,15 +97,11 @@ public final class AdminRequests {
     public record ArchiveRequest(@NotNull Integer version) {
     }
 
-    public record ConfirmRequest(@Size(max = 500) String adminNote) {
-    }
-
-    public record NoteRequest(@Size(max = 500) String adminNote) {
-    }
-
-    public record NoteUpdateRequest(@NotBlank @Size(max = 500) String adminNote) {
-    }
-
-    public record CancelRequest(@NotBlank @Size(max = 500) String adminNote) {
+    public record AdvertisementUpdateRequest(
+            @NotBlank @Size(max = 100) String title,
+            @Size(max = 500) String description,
+            @NotBlank @Size(max = 500) String link,
+            @NotNull Boolean enabled
+    ) {
     }
 }

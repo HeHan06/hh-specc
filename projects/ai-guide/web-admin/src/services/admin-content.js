@@ -11,6 +11,7 @@ import request from '../platform/request.js';
 import {
   archiveContent as fetchArchiveContent,
   createCategory as fetchCreateCategory,
+  createContent as fetchCreateContent,
   createTopic as fetchCreateTopic,
   getContent as fetchGetContent,
   listCategories as fetchListCategories,
@@ -57,6 +58,11 @@ export function updateCategory(categoryCode, body) {
 /** 分页查询内容（含草稿、已下架、已归档）。 */
 export function listContents(query) {
   return fetchListContents(request, query);
+}
+
+/** 创建内容草稿，返回服务端生成的内容编码与初始状态。 */
+export function createContent(body) {
+  return fetchCreateContent(request, body);
 }
 
 /** 获取内容管理详情（含 version，用于乐观锁）。 */

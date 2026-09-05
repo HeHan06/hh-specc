@@ -32,6 +32,10 @@ export function getLatestContents(request, params) {
   });
 }
 
+export function getStats(request) {
+  return createApiClient(request).get('/api/contents/stats');
+}
+
 export function getRecommendedContents(request, params) {
   return createApiClient(request).get('/api/contents/recommended', {
     query: { pageNum: params.pageNum, pageSize: params.pageSize },

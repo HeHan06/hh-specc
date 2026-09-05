@@ -1,6 +1,5 @@
 package com.aiguide.content.controller;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -23,16 +22,6 @@ import com.aiguide.content.service.CategoryService;
 import com.aiguide.content.service.ContentService;
 import com.aiguide.content.service.LikeService;
 import com.aiguide.content.service.TopicService;
-import com.aiguide.order.controller.ConsultationOrderController;
-import com.aiguide.order.controller.TipOrderController;
-import com.aiguide.order.dto.ConsultationCreateRequest;
-import com.aiguide.order.dto.ConsultationCreateResultView;
-import com.aiguide.order.dto.ConsultationStatusView;
-import com.aiguide.order.dto.TipCreateRequest;
-import com.aiguide.order.dto.TipCreateResultView;
-import com.aiguide.order.dto.TipStatusView;
-import com.aiguide.order.service.ConsultationOrderService;
-import com.aiguide.order.service.TipOrderService;
 import com.aiguide.security.JwtAuthFilter;
 import com.aiguide.security.JwtTokenService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -44,7 +33,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -65,7 +53,6 @@ class PublicApiControllerTest {
     private static final String CATEGORY_CODE = "langchain";
     private static final String CONTENT_CODE = "content-1";
     private static final String VISITOR_ID = "visitor-0001";
-    private static final String ORDER_NO = "0123456789abcdef0123456789abcdef";
     private static final String WECHAT_ID = "15306507997";
 
     @Mock
@@ -79,12 +66,6 @@ class PublicApiControllerTest {
 
     @Mock
     private LikeService likeService;
-
-    @Mock
-    private TipOrderService tipOrderService;
-
-    @Mock
-    private ConsultationOrderService consultationOrderService;
 
     @Mock
     private JwtTokenService jwtTokenService;
@@ -102,8 +83,6 @@ class PublicApiControllerTest {
                         new CategoryController(categoryService),
                         new ContentController(contentService),
                         new LikeController(likeService),
-                        new TipOrderController(tipOrderService),
-                        new ConsultationOrderController(consultationOrderService),
                         new SiteConfigController(new SiteConfigProperties(WECHAT_ID)))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setValidator(validator)
@@ -273,104 +252,6 @@ class PublicApiControllerTest {
                         .header("X-Visitor-Id", VISITOR_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(2000));
-    }
-
-    @Test
-    void createTip_validatesRequiredAmount() throws Exception {
-        mockMvc.perform(post("/api/tips")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"contentCode\":\"content-1\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(1000));
-    }
-
-    @Test
-    void createTip_isPublicAndReturnsWechatId() throws Exception {
-        when(tipOrderService.create(any(TipCreateRequest.class), any()))
-                .thenReturn(new TipCreateResultView(ORDER_NO, 1000, "submitted", WECHAT_ID));
-
-        mockMvc.perform(post("/api/tips")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"contentCode\":\"content-1\",\"amount\":1000}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.orderNo").value(ORDER_NO))
-                .andExpect(jsonPath("$.data.amountCents").value(1000))
-                .andExpect(jsonPath("$.data.wechatId").value(WECHAT_ID));
-    }
-
-    @Test
-    void getTipStatus_isPublicAndReturnsWechatId() throws Exception {
-        when(tipOrderService.getByOrderNo(ORDER_NO))
-                .thenReturn(new TipStatusView(ORDER_NO, 1000, "submitted", WECHAT_ID, null));
-
-        mockMvc.perform(get("/api/tips/{orderNo}", ORDER_NO))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.orderNo").value(ORDER_NO))
-                .andExpect(jsonPath("$.data.wechatId").value(WECHAT_ID));
-    }
-
-    @Test
-    void getTipStatus_returnsNotFoundError() throws Exception {
-        when(tipOrderService.getByOrderNo(ORDER_NO))
-                .thenThrow(new ApiException(ApiErrorCode.TIP_ORDER_NOT_FOUND));
-
-        mockMvc.perform(get("/api/tips/{orderNo}", ORDER_NO))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(2101));
-    }
-
-    @Test
-    void createConsultation_validatesRequiredFields() throws Exception {
-        mockMvc.perform(post("/api/consultations")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(1000));
-    }
-
-    @Test
-    void createConsultation_isPublicAndReturnsWechatId() throws Exception {
-        when(consultationOrderService.create(any(ConsultationCreateRequest.class)))
-                .thenReturn(new ConsultationCreateResultView(ORDER_NO, 50000, "submitted", WECHAT_ID));
-
-        mockMvc.perform(post("/api/consultations")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{"
-                                + "\"contactName\":\"张三\","
-                                + "\"contactType\":\"phone\","
-                                + "\"contactValue\":\"13800138000\","
-                                + "\"topicText\":\"Agent 架构\","
-                                + "\"requestText\":\"想咨询 Agent 面试\","
-                                + "\"expectedTime\":\"2099-01-01T00:00:00Z\""
-                                + "}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.orderNo").value(ORDER_NO))
-                .andExpect(jsonPath("$.data.priceCents").value(50000));
-    }
-
-    @Test
-    void getConsultationStatus_isPublicAndReturnsWechatId() throws Exception {
-        when(consultationOrderService.getByOrderNo(ORDER_NO))
-                .thenReturn(new ConsultationStatusView(ORDER_NO, 50000, false, "submitted", WECHAT_ID, null));
-
-        mockMvc.perform(get("/api/consultations/{orderNo}", ORDER_NO))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.orderNo").value(ORDER_NO))
-                .andExpect(jsonPath("$.data.wechatId").value(WECHAT_ID));
-    }
-
-    @Test
-    void getConsultationStatus_returnsNotFoundError() throws Exception {
-        when(consultationOrderService.getByOrderNo(ORDER_NO))
-                .thenThrow(new ApiException(ApiErrorCode.CONSULTATION_ORDER_NOT_FOUND));
-
-        mockMvc.perform(get("/api/consultations/{orderNo}", ORDER_NO))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(2201));
     }
 
     @Test

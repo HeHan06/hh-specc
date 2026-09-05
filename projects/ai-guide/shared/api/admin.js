@@ -74,44 +74,12 @@ export function archiveContent(request, contentCode, body) {
   return createApiClient(request).post(`${BASE}/contents/${contentCode}/archive`, { body });
 }
 
-export function listTips(request, query) {
-  return createApiClient(request).get(`${BASE}/tips`, { query });
+export function getAdvertisement(request) {
+  return createApiClient(request).get(`${BASE}/advertisement`);
 }
 
-export function getTip(request, orderNo) {
-  return createApiClient(request).get(`${BASE}/tips/${orderNo}`);
-}
-
-export function receiveTip(request, orderNo) {
-  return createApiClient(request).post(`${BASE}/tips/${orderNo}/receive`);
-}
-
-export function closeTip(request, orderNo) {
-  return createApiClient(request).post(`${BASE}/tips/${orderNo}/close`);
-}
-
-export function listConsultations(request, query) {
-  return createApiClient(request).get(`${BASE}/consultations`, { query });
-}
-
-export function getConsultation(request, orderNo) {
-  return createApiClient(request).get(`${BASE}/consultations/${orderNo}`);
-}
-
-export function confirmConsultation(request, orderNo, body) {
-  return createApiClient(request).post(`${BASE}/consultations/${orderNo}/confirm`, { body });
-}
-
-export function completeConsultation(request, orderNo, body) {
-  return createApiClient(request).post(`${BASE}/consultations/${orderNo}/complete`, { body });
-}
-
-export function cancelConsultation(request, orderNo, body) {
-  return createApiClient(request).post(`${BASE}/consultations/${orderNo}/cancel`, { body });
-}
-
-export function updateConsultationNote(request, orderNo, body) {
-  return createApiClient(request).post(`${BASE}/consultations/${orderNo}/note`, { body });
+export function updateAdvertisement(request, body) {
+  return createApiClient(request).put(`${BASE}/advertisement`, { body });
 }
 
 export function listOperationLogs(request, query) {

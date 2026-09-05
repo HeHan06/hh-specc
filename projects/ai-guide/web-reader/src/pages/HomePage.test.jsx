@@ -8,12 +8,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import HomePage from './HomePage.jsx';
-import { getCategories, getLatestContents, getTopics } from '../services/content.js';
+import { getCategories, getLatestContents, getStats, getTopics } from '../services/content.js';
 
 vi.mock('../services/content.js', () => ({
   getTopics: vi.fn(),
   getCategories: vi.fn(),
   getLatestContents: vi.fn(),
+  getStats: vi.fn(),
 }));
 
 const topics = [
@@ -56,6 +57,7 @@ describe('HomePage', () => {
     getTopics.mockResolvedValue(topics);
     getCategories.mockImplementation((topicCode) => Promise.resolve(categoriesMap[topicCode] ?? []));
     getLatestContents.mockResolvedValue(latestPage);
+    getStats.mockResolvedValue({ totalViews: 544, totalLikes: 0 });
   });
 
   it('展示热门主题与最近更新，并提供直达内容流的链接', async () => {
@@ -67,6 +69,8 @@ describe('HomePage', () => {
     expect(screen.getByText('最近更新')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Agent 设计/ })).toHaveAttribute('href', '/docs/agent-arch');
     expect(screen.getByRole('link', { name: /最新文章标题/ })).toHaveAttribute('href', '/docs/agent-arch#content-1');
+    expect(screen.getByText(/累积访问/)).toBeInTheDocument();
+    expect(screen.getByText(/点赞/)).toBeInTheDocument();
   });
 
   it('数据未返回时展示 loading 状态', () => {

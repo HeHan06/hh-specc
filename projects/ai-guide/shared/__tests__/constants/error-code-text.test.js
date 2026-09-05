@@ -24,9 +24,9 @@ describe('错误码文案映射', () => {
 
   it('各业务模块错误码映射为契约中的 user-text', () => {
     expect(getErrorText(2000)).toBe('内容不存在或已下架');
-    expect(getErrorText(2100)).toBe('请选择合法的打赏金额');
-    expect(getErrorText(2200)).toBe('请检查咨询信息后重新提交');
+    expect(getErrorText(2001)).toBe('主题不存在或暂不可用');
     expect(getErrorText(2302)).toBe('内容已被他人更新，请重新加载后再编辑');
+    expect(getErrorText(2305)).toBe('内容参数非法或内容不存在');
   });
 
   it('未登记错误码回退到默认文案', () => {

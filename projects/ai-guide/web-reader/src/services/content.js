@@ -17,6 +17,7 @@ import {
   getContentDetail as fetchContentDetail,
   getLatestContents as fetchLatestContents,
   getRecommendedContents as fetchRecommendedContents,
+  getStats as fetchStats,
   getTopics as fetchTopics,
   likeContent as fetchLikeContent,
   searchContents as fetchSearchContents,
@@ -42,6 +43,11 @@ export function getContentsByCategory(params) {
 /** 分页查询最新已发布内容。 */
 export function getLatestContents(params = DEFAULT_PAGE) {
   return fetchLatestContents(request, params);
+}
+
+/** 查询全站内容聚合统计（累积浏览与点赞总数）。 */
+export function getStats() {
+  return fetchStats(request);
 }
 
 /** 分页查询推荐已发布内容。 */

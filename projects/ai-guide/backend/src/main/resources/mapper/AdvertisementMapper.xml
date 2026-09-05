@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiguide.advertisement.mapper.AdvertisementMapper">
+    <resultMap id="AdvertisementViewMap" type="com.aiguide.advertisement.dto.AdvertisementView">
+        <constructor>
+            <arg column="title" javaType="string"/>
+            <arg column="description" javaType="string"/>
+            <arg column="link" javaType="string"/>
+            <arg column="enabled" javaType="_boolean"/>
+        </constructor>
+    </resultMap>
+
+    <select id="selectEnabled" resultMap="AdvertisementViewMap">
+        SELECT title,
+               description,
+               link,
+               enabled
+        FROM advertisement
+        WHERE id = 1
+          AND enabled = TRUE
+    </select>
+
+    <select id="selectCurrent" resultMap="AdvertisementViewMap">
+        SELECT title,
+               description,
+               link,
+               enabled
+        FROM advertisement
+        WHERE id = 1
+    </select>
+
+    <insert id="upsert">
+        INSERT INTO advertisement (id, title, description, link, enabled)
+        VALUES (1, #{title}, #{description,jdbcType=VARCHAR}, #{link}, #{enabled})
+        ON CONFLICT (id) DO UPDATE
+            SET title = EXCLUDED.title,
+                description = EXCLUDED.description,
+                link = EXCLUDED.link,
+                enabled = EXCLUDED.enabled
+    </insert>
+</mapper>

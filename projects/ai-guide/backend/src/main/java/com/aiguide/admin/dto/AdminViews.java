@@ -43,25 +43,6 @@ public final class AdminViews {
     public record ContentPublishView(String code, String status, String publishedAt) {
     }
 
-    public record TipListView(String orderNo, String contentCode, Integer amountCents, String status,
-                              String contactValue, String createdAt) {
-    }
-
-    public record TipDetailView(String orderNo, String contentCode, Integer amountCents,
-                                String contactName, String contactValue, String message, String status,
-                                String receivedAt, String closedAt, String createdAt) {
-    }
-
-    public record ConsultationListView(String orderNo, String contactName, String contactValue,
-                                       String topicText, Integer priceCents, String status, String createdAt) {
-    }
-
-    public record ConsultationDetailView(String orderNo, String contactName, String contactType,
-                                         String contactValue, String topicText, String requestText,
-                                         String expectedTime, Integer priceCents, boolean freeQuotaUsed,
-                                         String status, String adminNote, String confirmedAt, String createdAt) {
-    }
-
     public record OperationLogView(Long id, String username, String action, String targetType,
                                    String targetCode, String beforeState, String afterState, String createdAt) {
     }

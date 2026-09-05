@@ -7,6 +7,7 @@
  */
 
 export const CONTENT_TYPE = Object.freeze({
+  ALGORITHM: 'algorithm',
   ARTICLE: 'article',
   INTERVIEW: 'interview',
   QUESTION: 'question',
@@ -14,6 +15,7 @@ export const CONTENT_TYPE = Object.freeze({
 });
 
 export const CONTENT_TYPE_TEXT = Object.freeze({
+  algorithm: '算法题模板',
   article: '文章',
   interview: '面试复盘',
   question: '题目',
@@ -44,6 +46,6 @@ export const CONTENT_STATUS_TEXT = Object.freeze({
   archived: '已归档',
 });
 
-export const CONTENT_TYPES = Object.freeze(['article', 'interview', 'question', 'resume']);
+export const CONTENT_TYPES = Object.freeze(['article', 'algorithm', 'interview', 'question', 'resume']);
 export const CONTENT_SOURCES = Object.freeze(['original', 'migrated']);
 export const CONTENT_STATUSES = Object.freeze(['draft', 'published', 'unpublished', 'archived']);

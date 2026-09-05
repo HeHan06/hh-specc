@@ -25,8 +25,8 @@
  */
 
 /**
- * @typedef {'article'|'interview'|'question'|'resume'} ContentType
- * 内容四分类：文章、面试复盘、题目、简历优化内容。
+ * @typedef {'article'|'algorithm'|'interview'|'question'|'resume'} ContentType
+ * 内容五分类：文章、算法题模板、面试复盘、题目、简历优化内容。
  */
 
 /**

@@ -12,8 +12,6 @@ import {
   isValidSearchKeyword,
   isValidPageNum,
   isValidPageSize,
-  isValidTipAmount,
-  validateConsultationForm,
 } from '../../utils/validate.js';
 
 describe('联系方式校验', () => {
@@ -69,58 +67,3 @@ describe('搜索词与分页校验', () => {
   });
 });
 
-describe('打赏金额档位校验', () => {
-  it('仅接受契约预设的六个档位', () => {
-    expect(isValidTipAmount(10)).toBe(true);
-    expect(isValidTipAmount(100)).toBe(true);
-    expect(isValidTipAmount(500)).toBe(true);
-    expect(isValidTipAmount(1000)).toBe(true);
-    expect(isValidTipAmount(5000)).toBe(true);
-    expect(isValidTipAmount(10000)).toBe(true);
-    expect(isValidTipAmount(15)).toBe(false);
-    expect(isValidTipAmount(10001)).toBe(false);
-    expect(isValidTipAmount(10.5)).toBe(false);
-  });
-});
-
-describe('付费咨询表单校验', () => {
-  const validForm = () => ({
-    contactName: '张三',
-    contactType: 'phone',
-    contactValue: '13800138000',
-    topicText: 'Agent 架构设计',
-    requestText: '想了解多 Agent 协作方案',
-    expectedTime: new Date(Date.now() + 86400000).toISOString(),
-  });
-
-  it('必填与格式均合法时返回 valid:true', () => {
-    expect(validateConsultationForm(validForm())).toEqual({ valid: true, errors: {} });
-  });
-
-  it('缺项时标记对应字段错误', () => {
-    const result = validateConsultationForm({});
-    expect(result.valid).toBe(false);
-    expect(result.errors).toHaveProperty('contactName');
-    expect(result.errors).toHaveProperty('contactType');
-    expect(result.errors).toHaveProperty('contactValue');
-    expect(result.errors).toHaveProperty('topicText');
-    expect(result.errors).toHaveProperty('requestText');
-    expect(result.errors).toHaveProperty('expectedTime');
-  });
-
-  it('联系方式格式非法时标记 contactValue', () => {
-    const form = validForm();
-    form.contactValue = 'bad-contact';
-    const result = validateConsultationForm(form);
-    expect(result.valid).toBe(false);
-    expect(result.errors).toHaveProperty('contactValue');
-  });
-
-  it('期望时间早于当前时间时标记 expectedTime', () => {
-    const form = validForm();
-    form.expectedTime = new Date(Date.now() - 86400000).toISOString();
-    const result = validateConsultationForm(form);
-    expect(result.valid).toBe(false);
-    expect(result.errors).toHaveProperty('expectedTime');
-  });
-});

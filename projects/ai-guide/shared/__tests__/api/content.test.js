@@ -9,6 +9,7 @@ import {
   getContentsByCategory,
   getLatestContents,
   getRecommendedContents,
+  getStats,
   searchContents,
   getContentDetail,
   likeContent,
@@ -55,6 +56,15 @@ describe('内容 API 客户端', () => {
       method: 'GET',
       path: '/api/contents/latest',
       query: { pageNum: 1, pageSize: 20 },
+    }));
+  });
+
+  it('getStats 请求 GET /api/contents/stats', async () => {
+    const request = mockRequest({ totalViews: 544, totalLikes: 0 });
+    await expect(getStats(request)).resolves.toEqual({ totalViews: 544, totalLikes: 0 });
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({
+      method: 'GET',
+      path: '/api/contents/stats',
     }));
   });
 

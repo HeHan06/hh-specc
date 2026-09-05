@@ -9,9 +9,6 @@ import ReaderLayout from './layouts/ReaderLayout.jsx';
 import HomePage from './pages/HomePage.jsx';
 import DocsPage from './pages/DocsPage.jsx';
 import SearchPage from './pages/SearchPage.jsx';
-import TipPage from './pages/TipPage.jsx';
-import ConsultationPage from './pages/ConsultationPage.jsx';
-import OrderStatusPage from './pages/OrderStatusPage.jsx';
 
 export default function App() {
   return (
@@ -20,10 +17,6 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/docs/:categoryCode" element={<DocsPage />} />
         <Route path="/search" element={<SearchPage />} />
-        <Route path="/tip" element={<TipPage />} />
-        <Route path="/consultation" element={<ConsultationPage />} />
-        <Route path="/orders/tips/:orderNo" element={<OrderStatusPage />} />
-        <Route path="/orders/consultations/:orderNo" element={<OrderStatusPage />} />
       </Route>
     </Routes>
   );

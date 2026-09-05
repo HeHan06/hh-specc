@@ -1,14 +1,10 @@
 /**
- * 共享输入校验规则：联系方式、搜索词、分页、打赏金额与咨询表单。
+ * 共享输入校验规则：联系方式、搜索词、分页。
  * 规则与 contracts/*.yaml 的字段 validate 对齐，双端复用同一份校验逻辑。
  *
- * @capability Req-5 打赏订单输入校验
- * @capability Req-6 付费咨询输入校验
  * @capability Req-12 输入校验
  * @capabilityPoint T-06 实现共享输入校验规则
  */
-
-import { TIP_AMOUNT_CENTS } from '../constants/order.js';
 
 const PHONE_PATTERN = /^1[3-9]\d{9}$/;
 const WECHAT_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{5,19}$/;
@@ -70,58 +66,4 @@ export function isValidPageNum(value) {
  */
 export function isValidPageSize(value) {
   return Number.isInteger(value) && value >= 1 && value <= 100;
-}
-
-/**
- * 校验打赏金额是否属于预设档位。
- * @param {unknown} amount 打赏金额（分）
- * @returns {boolean}
- */
-export function isValidTipAmount(amount) {
-  return Number.isInteger(amount) && TIP_AMOUNT_CENTS.includes(amount);
-}
-
-/**
- * 校验付费咨询表单，返回 valid 与逐字段错误。
- * @param {Object} [form] 咨询表单
- * @returns {{valid: boolean, errors: Record<string, string>}}
- */
-export function validateConsultationForm(form = {}) {
-  const errors = {};
-
-  const contactName = typeof form.contactName === 'string' ? form.contactName.trim() : '';
-  if (contactName.length < 1 || contactName.length > 50) {
-    errors.contactName = '请填写联系人（1-50 个字符）';
-  }
-
-  const contactType = form.contactType;
-  if (contactType !== 'phone' && contactType !== 'wechat') {
-    errors.contactType = '联系方式类型非法';
-  }
-
-  if (!isValidContactValue(form.contactValue, contactType)) {
-    errors.contactValue = '请填写正确的手机号或微信';
-  }
-
-  const topicText = typeof form.topicText === 'string' ? form.topicText.trim() : '';
-  if (topicText.length < 1 || topicText.length > 200) {
-    errors.topicText = '请填写咨询主题（1-200 个字符）';
-  }
-
-  const requestText = typeof form.requestText === 'string' ? form.requestText.trim() : '';
-  if (requestText.length < 1 || requestText.length > 2000) {
-    errors.requestText = '请填写咨询诉求（1-2000 个字符）';
-  }
-
-  if (!isValidExpectedTime(form.expectedTime)) {
-    errors.expectedTime = '请选择晚于当前时间的期望时间';
-  }
-
-  return { valid: Object.keys(errors).length === 0, errors };
-}
-
-function isValidExpectedTime(value) {
-  if (typeof value !== 'string') return false;
-  const time = Date.parse(value);
-  return !Number.isNaN(time) && time > Date.now();
 }

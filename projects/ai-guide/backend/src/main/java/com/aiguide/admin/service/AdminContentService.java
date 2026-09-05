@@ -43,7 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Capability(req = "Req-9", name = "后台内容管理")
 public class AdminContentService {
 
-    private static final Set<String> CONTENT_TYPES = Set.of("article", "interview", "question", "resume");
+    private static final Set<String> CONTENT_TYPES = Set.of("article", "algorithm", "interview", "question", "resume");
     private static final Set<String> CONTENT_SOURCES = Set.of("original", "migrated");
 
     private final TopicMapper topicMapper;

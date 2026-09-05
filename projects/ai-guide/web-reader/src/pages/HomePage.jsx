@@ -1,13 +1,14 @@
 /**
  * 阅读站首页：深色科技感 Hero + 热门主题 + 最近更新。
- * Hero 自带深色导航（打赏/付费咨询入口）与搜索，CTA 直达首个分类内容流。
+ * Hero 自带深色导航与搜索，CTA 直达首个分类内容流。
  *
  * @orchestrate getTopics / getCategories / getLatestContents
  */
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Alert, Button, Spin } from 'antd';
-import { getCategories, getLatestContents, getTopics } from '../services/content.js';
+import { getCategories, getLatestContents, getStats, getTopics } from '../services/content.js';
+import AdvertisementBanner from '../components/AdvertisementBanner.jsx';
 import styles from './HomePage.module.css';
 
 const INITIAL_STATE = Object.freeze({
@@ -16,6 +17,7 @@ const INITIAL_STATE = Object.freeze({
   latest: [],
   topicEntry: {},
   firstCategoryCode: null,
+  stats: { totalViews: 0, totalLikes: 0 },
 });
 
 function formatDate(value) {
@@ -24,6 +26,11 @@ function formatDate(value) {
   }
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('zh-CN');
+}
+
+function formatCount(value) {
+  const num = Number(value);
+  return Number.isNaN(num) ? 0 : num.toLocaleString('zh-CN');
 }
 
 export default function HomePage() {
@@ -38,7 +45,7 @@ export default function HomePage() {
     async function load() {
       setState((previous) => ({ ...previous, status: 'loading' }));
       try {
-        const [topics, latestPage] = await Promise.all([getTopics(), getLatestContents()]);
+        const [topics, latestPage, stats] = await Promise.all([getTopics(), getLatestContents(), getStats()]);
         if (cancelled) {
           return;
         }
@@ -59,10 +66,11 @@ export default function HomePage() {
           latest: latestPage?.list ?? [],
           topicEntry,
           firstCategoryCode: groups[0]?.categories?.[0]?.code ?? null,
+          stats: stats ?? { totalViews: 0, totalLikes: 0 },
         });
       } catch {
         if (!cancelled) {
-          setState({ status: 'error', topics: [], latest: [], topicEntry: {}, firstCategoryCode: null });
+          setState({ status: 'error', topics: [], latest: [], topicEntry: {}, firstCategoryCode: null, stats: { totalViews: 0, totalLikes: 0 } });
         }
       }
     }
@@ -115,10 +123,6 @@ export default function HomePage() {
 
         <div className={styles.heroNav}>
           <span className={styles.brand}>AI Agent 面试指南</span>
-          <div className={styles.heroNavRight}>
-            <Link to="/tip" className={styles.glassBtn}>打赏</Link>
-            <Link to="/consultation" className={`${styles.glassBtn} ${styles.glassBtnPrimary}`}>付费咨询</Link>
-          </div>
         </div>
 
         <div className={styles.heroBody}>
@@ -141,8 +145,25 @@ export default function HomePage() {
             <div className={styles.stat}><div className={styles.num}>{state.topics.length}</div><div className={styles.lbl}>大主题</div></div>
             <div className={styles.stat}><div className={styles.num}>15+</div><div className={styles.lbl}>公司面经</div></div>
           </div>
+          <div className={styles.heroSubStats}>
+            <span className={styles.subStat}>
+              <span className={styles.subIcon}>
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+              </span>
+              累积访问 <b>{formatCount(state.stats.totalViews)}</b>
+            </span>
+            <span className={styles.subDot}>·</span>
+            <span className={styles.subStat}>
+              <span className={styles.subIcon}>
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" /></svg>
+              </span>
+              点赞 <b>{formatCount(state.stats.totalLikes)}</b>
+            </span>
+          </div>
         </div>
       </section>
+
+      <AdvertisementBanner />
 
       <div className={styles.body}>
         <section className={styles.section}>

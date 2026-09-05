@@ -16,8 +16,9 @@ import {
 } from '../../constants/content.js';
 
 describe('内容类型常量', () => {
-  it('四类内容枚举值与契约一致', () => {
+  it('五类内容枚举值与契约一致', () => {
     expect(CONTENT_TYPE.ARTICLE).toBe('article');
+    expect(CONTENT_TYPE.ALGORITHM).toBe('algorithm');
     expect(CONTENT_TYPE.INTERVIEW).toBe('interview');
     expect(CONTENT_TYPE.QUESTION).toBe('question');
     expect(CONTENT_TYPE.RESUME).toBe('resume');
@@ -25,6 +26,7 @@ describe('内容类型常量', () => {
 
   it('内容类型文案与业务术语一致', () => {
     expect(CONTENT_TYPE_TEXT.article).toBe('文章');
+    expect(CONTENT_TYPE_TEXT.algorithm).toBe('算法题模板');
     expect(CONTENT_TYPE_TEXT.interview).toBe('面试复盘');
     expect(CONTENT_TYPE_TEXT.question).toBe('题目');
     expect(CONTENT_TYPE_TEXT.resume).toBe('简历优化内容');
@@ -49,7 +51,7 @@ describe('内容类型常量', () => {
   });
 
   it('提供枚举值数组便于下拉与筛选', () => {
-    expect(CONTENT_TYPES).toEqual(['article', 'interview', 'question', 'resume']);
+    expect(CONTENT_TYPES).toEqual(['article', 'algorithm', 'interview', 'question', 'resume']);
     expect(CONTENT_SOURCES).toEqual(['original', 'migrated']);
     expect(CONTENT_STATUSES).toEqual(['draft', 'published', 'unpublished', 'archived']);
   });

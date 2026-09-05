@@ -3,6 +3,7 @@ package com.aiguide.content.controller;
 import com.aiguide.common.ApiResponse;
 import com.aiguide.common.PageResult;
 import com.aiguide.content.dto.ContentDetailView;
+import com.aiguide.content.dto.ContentStatsView;
 import com.aiguide.content.dto.ContentSummaryView;
 import com.aiguide.content.service.ContentService;
 import com.hhspecc.observability.Capability;
@@ -61,6 +62,12 @@ public class ContentController {
                                                                @RequestParam(defaultValue = "1") @Min(1) int pageNum,
                                                                @RequestParam(defaultValue = "20") @Min(1) @Max(100) int pageSize) {
         return ApiResponse.success(contentService.search(keyword, pageNum, pageSize));
+    }
+
+    @GetMapping("/stats")
+    @CapabilityPoint(task = "T-14", name = "查询内容聚合统计")
+    public ApiResponse<ContentStatsView> stats() {
+        return ApiResponse.success(contentService.getStats());
     }
 
     @GetMapping("/{contentCode}")

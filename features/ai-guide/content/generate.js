@@ -36,6 +36,7 @@ const categories = [
   ['interview-bytedance', 'interview', '字节', 12],
   ['interview-vivo', 'interview', 'vivo', 13],
   ['interview-ctrip', 'interview', '携程', 14],
+  ['interview-netease', 'interview', '网易', 15],
   ['resume-cv', 'resume', '简历', 1],
   ['resume-prep', 'resume', '简历准备', 2],
 ];
@@ -55,6 +56,7 @@ const categoryTags = {
   'interview-dewu': ['得物'],
   'interview-weplay': ['微派'],
   'interview-ctrip': ['携程'],
+  'interview-netease': ['网易'],
   'interview-tuya': ['涂鸦'],
   'interview-didi': ['滴滴'],
   'interview-nengliang': ['能良电商'],
@@ -72,6 +74,7 @@ const titleOverrides = {
   'resume-prep-question-001': '简历高频问题集合',
   'resume-prep-article-001': '面试自我介绍',
   'backend-database-article-001': 'SQL 语法基础教程',
+  'interview-netease-001': '网易 企业效能Agent开发',
 };
 
 function walk(dir) {

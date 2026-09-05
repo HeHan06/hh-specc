@@ -1,0 +1,41 @@
+/* 广告位引流信息条：通栏、紧贴首屏 Hero 下方，不跳转。 */
+
+.wrap {
+  background:
+    radial-gradient(720px 240px at 50% -40%, rgba(139, 92, 246, 0.28), transparent 60%),
+    linear-gradient(180deg, #1b2355 0%, #141c44 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 18px var(--space-3);
+}
+
+.inner {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  color: #fff;
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #c7d2fe;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.desc {
+  font-size: 14px;
+  color: #a5b4fc;
+}

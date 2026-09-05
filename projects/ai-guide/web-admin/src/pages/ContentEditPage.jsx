@@ -10,7 +10,7 @@
  * @orchestrate getContent/updateContent/publishContent/unpublishContent/restoreContent/archiveContent
  */
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
   Button,
@@ -32,6 +32,7 @@ import {
 import { getErrorText } from '@shared/constants/error-code-text.js';
 import {
   archiveContent,
+  createContent,
   getContent,
   listCategories,
   publishContent,
@@ -73,8 +74,44 @@ function buildContentBody(values, version) {
   };
 }
 
+/** 把编辑表单值规范化为契约要求的创建 body（不含 version / recommended）。 */
+function buildCreateBody(values) {
+  return {
+    categoryCode: values.categoryCode,
+    type: values.type,
+    title: values.title?.trim() ?? '',
+    summary: values.summary,
+    body: values.body,
+    tags: Array.isArray(values.tags) ? values.tags : [],
+    source: values.source,
+  };
+}
+
+/** 新建模式下的空表单默认值，字段与编辑详情视图对齐。 */
+function emptyContent() {
+  return {
+    code: null,
+    categoryCode: undefined,
+    type: undefined,
+    title: '',
+    summary: '',
+    body: '',
+    tags: [],
+    source: undefined,
+    status: 'draft',
+    recommended: false,
+    version: 0,
+    publishedAt: null,
+    updatedAt: null,
+  };
+}
+
 export default function ContentEditPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { contentCode } = useParams();
+  const isNew = !contentCode;
+  const imported = location.state?.imported ?? null;
   const [loadState, setLoadState] = useState(INITIAL_LOAD_STATE);
   const [reloadKey, setReloadKey] = useState(0);
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
@@ -91,17 +128,18 @@ export default function ContentEditPage() {
       setActionErrorCode(null);
       setReviewConfirmed(false);
       try {
-        const [content, categoryPage] = await Promise.all([
-          getContent(contentCode),
-          listCategories({ pageNum: 1, pageSize: 100 }),
-        ]);
+        const categoryPage = await listCategories({ pageNum: 1, pageSize: 100 });
+        const categories = categoryPage?.list ?? [];
+        const content = isNew
+          ? (imported ? { ...emptyContent(), ...imported } : emptyContent())
+          : await getContent(contentCode);
         if (cancelled) {
           return;
         }
         setLoadState({
           status: 'success',
           content,
-          categories: categoryPage?.list ?? [],
+          categories,
         });
       } catch {
         if (cancelled) {
@@ -115,7 +153,7 @@ export default function ContentEditPage() {
     return () => {
       cancelled = true;
     };
-  }, [contentCode, reloadKey]);
+  }, [contentCode, isNew, reloadKey, imported]);
 
   function handleReload() {
     setActionError('');
@@ -137,18 +175,23 @@ export default function ContentEditPage() {
     setActionError('');
     setActionErrorCode(null);
     try {
-      const result = await updateContent(
-        contentCode,
-        buildContentBody(values, loadState.content.version),
-      );
-      setLoadState((previous) => ({
-        ...previous,
-        content: {
-          ...previous.content,
-          ...buildContentBody(values, previous.content.version),
-          version: result?.version ?? previous.content.version,
-        },
-      }));
+      if (isNew) {
+        const result = await createContent(buildCreateBody(values));
+        navigate(`/contents/${result.code}/edit`, { replace: true });
+      } else {
+        const result = await updateContent(
+          contentCode,
+          buildContentBody(values, loadState.content.version),
+        );
+        setLoadState((previous) => ({
+          ...previous,
+          content: {
+            ...previous.content,
+            ...buildContentBody(values, previous.content.version),
+            version: result?.version ?? previous.content.version,
+          },
+        }));
+      }
     } catch (error) {
       showActionError(error);
     } finally {
@@ -259,7 +302,7 @@ export default function ContentEditPage() {
 
   return (
     <main>
-      <h1>内容编辑</h1>
+      <h1>{isNew ? '新建内容' : '内容编辑'}</h1>
       {actionError ? (
         <Alert
           type="error"
@@ -325,9 +368,11 @@ export default function ContentEditPage() {
           />
         </Form.Item>
 
-        <Form.Item name="recommended" label="推荐" valuePropName="checked">
-          <Switch />
-        </Form.Item>
+        {!isNew ? (
+          <Form.Item name="recommended" label="推荐" valuePropName="checked">
+            <Switch />
+          </Form.Item>
+        ) : null}
 
         <Space wrap>
           <Button
@@ -336,10 +381,10 @@ export default function ContentEditPage() {
             loading={actionPending === 'save'}
             autoInsertSpace={false}
           >
-            保存
+            {isNew ? '创建草稿' : '保存'}
           </Button>
 
-          {content.status === 'draft' ? (
+          {!isNew && content.status === 'draft' ? (
             <Button
               type="primary"
               htmlType="button"
@@ -351,7 +396,7 @@ export default function ContentEditPage() {
             </Button>
           ) : null}
 
-          {content.status === 'unpublished' ? (
+          {!isNew && content.status === 'unpublished' ? (
             <Button
               type="primary"
               htmlType="button"
@@ -363,7 +408,7 @@ export default function ContentEditPage() {
             </Button>
           ) : null}
 
-          {content.status === 'published' ? (
+          {!isNew && content.status === 'published' ? (
             <Popconfirm
               title="确认下架该内容？"
               okText="确认下架"
@@ -382,7 +427,7 @@ export default function ContentEditPage() {
             </Popconfirm>
           ) : null}
 
-          {content.status !== 'archived' ? (
+          {!isNew && content.status !== 'archived' ? (
             <Popconfirm
               title="确认归档该内容？归档后不再展示。"
               okText="确认归档"
@@ -403,7 +448,7 @@ export default function ContentEditPage() {
         </Space>
       </Form>
 
-      {requiresReview ? (
+      {!isNew && requiresReview ? (
         <Checkbox
           checked={reviewConfirmed}
           onChange={(event) => setReviewConfirmed(event.target.checked)}

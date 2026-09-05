@@ -6,6 +6,7 @@ import com.aiguide.common.ApiException;
 import com.aiguide.content.mapper.CategoryMapper;
 import com.aiguide.content.mapper.ContentMapper;
 import com.aiguide.content.dto.ContentDetailView;
+import com.aiguide.content.dto.ContentStatsView;
 import com.aiguide.content.dto.ContentSummaryView;
 import com.hhspecc.observability.Capability;
 import com.hhspecc.observability.CapabilityPoint;
@@ -87,6 +88,11 @@ public class ContentService {
         }
         contentMapper.incrementViewCount(contentCode);
         return detail;
+    }
+
+    @CapabilityPoint(task = "T-08", name = "查询内容聚合统计")
+    public ContentStatsView getStats() {
+        return contentMapper.selectPublishedStats();
     }
 
     private boolean hasVisitorId(String visitorId) {

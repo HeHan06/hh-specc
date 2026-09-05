@@ -10,6 +10,7 @@
 | PostgreSQL 16 | Homebrew | 5432 | 数据已就绪：`ai_guide` 库，45 条内容；管理员账号 `admin` 已建 |
 | backend | Java 17 + Spring Boot 3 + MyBatis | 8080 | `./mvnw spring-boot:run` |
 | web-reader | React 18 + Vite + AntD | 5173 | `npm run dev`，`/api` 代理到 8080 |
+| web-admin | React 18 + Vite + AntD | 5174 | `npm run dev -- --port 5174`，`/api` 代理到 8080 |
 
 ## 2. 正确启动顺序
 
@@ -28,9 +29,13 @@ cd projects/ai-guide/backend && ./mvnw spring-boot:run -DskipTests
 # ③ 前端（务必先补 PATH，见 P3）
 export PATH="/usr/local/bin:$PATH"
 cd projects/ai-guide/web-reader && npm run dev
+
+# ④ 管理后台（可选；用 5174 避开 web-reader 的 5173，见 P4）
+export PATH="/usr/local/bin:$PATH"
+cd projects/ai-guide/web-admin && npm run dev -- --port 5174
 ```
 
-验证链路：`curl -s http://localhost:5173/api/topics` 应返回 `"code":0`。
+验证链路：`curl -s http://localhost:5173/api/topics` 应返回 `"code":0`；管理后台登录入口 http://localhost:5174/login。
 
 ## 3. 排障速查（症状 → 根因 → 解法）
 

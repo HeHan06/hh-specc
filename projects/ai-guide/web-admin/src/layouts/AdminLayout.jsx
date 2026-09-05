@@ -6,7 +6,7 @@
  * @capability Req-12 未登录/越权统一拦截
  * @capabilityPoint T-24 后台布局与守卫实现
  */
-import { Link, Navigate, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button, Layout, Menu, Space } from 'antd';
 import { clearSession, getSession } from '../store/auth.js';
 
@@ -14,10 +14,20 @@ const { Content, Header, Sider } = Layout;
 
 export default function AdminLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const session = getSession();
 
   if (!session?.token || session.role !== 'ADMIN') {
     return <Navigate to="/login" replace />;
+  }
+
+  function selectedKey(pathname) {
+    if (pathname.startsWith('/contents')) return '/contents';
+    if (pathname.startsWith('/topics')) return '/topics';
+    if (pathname.startsWith('/categories')) return '/categories';
+    if (pathname.startsWith('/advertisement')) return '/advertisement';
+    if (pathname.startsWith('/logs')) return '/logs';
+    return '/contents';
   }
 
   function handleLogout() {
@@ -32,12 +42,13 @@ export default function AdminLayout() {
         <Menu
           theme="dark"
           mode="inline"
-          selectedKeys={['/contents']}
+          selectedKeys={[selectedKey(location.pathname)]}
           items={[
-            {
-              key: '/contents',
-              label: <Link to="/contents">内容管理</Link>,
-            },
+            { key: '/contents', label: <Link to="/contents">内容管理</Link> },
+            { key: '/topics', label: <Link to="/topics">主题管理</Link> },
+            { key: '/categories', label: <Link to="/categories">专题管理</Link> },
+            { key: '/advertisement', label: <Link to="/advertisement">广告位</Link> },
+            { key: '/logs', label: <Link to="/logs">操作日志</Link> },
           ]}
         />
       </Sider>
